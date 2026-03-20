@@ -1,6 +1,6 @@
-PROJETO: pethub.py voltado a causa animal para adotantes via casa de ração ou através de ongs
-data da ultima atualização:
-19/03/2026
+#PROJETO: pethub.py voltado a causa animal para adotantes via casa de ração ou através de ongs
+#data da ultima atualização#
+"19/03/2026"
 
 import streamlit as st # Biblioteca principal para criação da interface web
 import qrcode          # Biblioteca para geração de QR Codes dinâmicos
@@ -132,7 +132,7 @@ if pagina == "Fichas Técnicas":
                 
                 with col1:
                     # Ajustado para o novo padrão Streamlit (use_container_width)
-                    st.image(animal["foto"], use_container_width=True)
+                    st.image(animal["foto"], width='stretch')
                 
                 with col2:
                     # LÓGICA DE EDIÇÃO AUTOMÁTICA
