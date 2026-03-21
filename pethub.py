@@ -1,17 +1,15 @@
-#PROJETO: pethub.py voltado a causa animal para adotantes via casa de ração ou através de ongs
-#data da ultima atualização#
-"19/03/2026"
+# PROJETO: pethub.py voltado a causa animal para adotantes via casa de ração ou através de ongs
+# Projeto de Extensão Universitária - Análise e Desenvolvimento de Sistemas
+# Data da última atualização: "20/03/2026"
 
 import streamlit as st # Biblioteca principal para criação da interface web
 import qrcode          # Biblioteca para geração de QR Codes dinâmicos
 from io import BytesIO  # Gerencia o armazenamento temporário de dados binários (imagens)
 import urllib.parse    # Utilizado para formatar links de URL (importante para o WhatsApp)
 from PIL import Image   # Processamento de imagens (essencial para o upload de fotos JPEG)
-
-# --- NOVOS IMPORTS OTIMIZADOS PARA GOOGLE SHEETS (CORREÇÃO DE PADDING E ERRO 200) ---
-import gspread
-from google.oauth2.service_account import Credentials
-from datetime import datetime
+import gspread         # Biblioteca para integração com Google Sheets
+from google.oauth2.service_account import Credentials # Gestão de credenciais GCP
+from datetime import datetime # Para registro de data nos cadastros
 
 # ==========================================
 # 1. CONFIGURAÇÃO DA PÁGINA (Metadata)
@@ -27,20 +25,22 @@ def conectar_google_sheets():
     try:
         # Escopos modernos para garantir escrita e leitura sem erros
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
-        
-        # Puxa as credenciais dos Secrets do Streamlit Cloud
-        creds_dict = st.secrets["gcp_service_account"]
-        
-        # A biblioteca 'google.oauth2' resolve o erro de padding automaticamente
-        creds = Credentials.from_service_account_info(creds_dict, scopes=scope)
+
+        # Carrega e limpa a chave explicitamente para evitar erro de padding e PEM no Streamlit Cloud
+        creds_info = dict(st.secrets["gcp_service_account"])
+        if "private_key" in creds_info:
+            # Correção crítica para o caractere de escape da chave privada
+            creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n").strip()
+
+        creds = Credentials.from_service_account_info(creds_info, scopes=scope)
         client = gspread.authorize(creds)
-        
-        # Abre a planilha pelo nome exato (Certifique-se que o nome no Drive é este)
+
+        # Abre a planilha pelo nome exato configurado no Google Drive
         return client.open("PetHub - Banco de Dados").sheet1
     except Exception as e:
-        # Filtro para ignorar o falso erro [200] do Google
+        # Filtro para ignorar o falso positivo [200] que o Google às vezes retorna em conexões rápidas
         if "200" not in str(e):
-            st.error(f"Erro de conexão com o Banco de Dados: {e}")
+            st.error(f"Erro real de conexão: {e}")
         return None
 
 # ==========================================
@@ -74,7 +74,6 @@ if 'lista_animais' not in st.session_state:
         {
             "nome": "Bento (Exemplo)",
             "idade": "1 ano",
-            "cor": "Preto e Branco",
             "raca": "SRD",
             "saude": "Vacinado e Vermifugado",
             "whatsapp": "5511941507706", 
@@ -83,7 +82,7 @@ if 'lista_animais' not in st.session_state:
         }
     ]
 
-# Controle de estado para edição automática
+# Controle de estado para edição dinâmica de fichas
 if 'editando_idx' not in st.session_state:
     st.session_state.editando_idx = None
 
@@ -103,6 +102,7 @@ with st.sidebar:
     st.divider()
     st.write("### Divulgue o Projeto")
     
+    # URL do projeto hospedado (ajustar conforme seu link final)
     url_site = "https://projeto-universitario-ads.streamlit.app"
     qr_img = gerar_qr_code(url_site)
     
@@ -114,8 +114,7 @@ with st.sidebar:
         file_name="qrcode_pethub.png",
         mime="image/png"
     )
-
-# ==========================================
+    # ==========================================
 # 5. PÁGINA: FICHAS TÉCNICAS (VISUALIZAÇÃO E EDIÇÃO)
 # ==========================================
 if pagina == "Fichas Técnicas":
@@ -131,11 +130,11 @@ if pagina == "Fichas Técnicas":
                 col1, col2 = st.columns([1, 1.5])
                 
                 with col1:
-                    # Ajustado para o novo padrão Streamlit (use_container_width)
-                    st.image(animal["foto"], width='stretch')
+                    # Exibe a foto do animal (URL ou Objeto Image)
+                    st.image(animal["foto"], use_container_width=True)
                 
                 with col2:
-                    # LÓGICA DE EDIÇÃO AUTOMÁTICA
+                    # LÓGICA DE EDIÇÃO DINÂMICA
                     if st.session_state.editando_idx == idx:
                         st.markdown(f"### 📝 Editando Ficha: {animal['nome']}")
                         
@@ -144,9 +143,9 @@ if pagina == "Fichas Técnicas":
                         ed_raca = st.text_input("Raça", animal.get('raca', 'SRD'), key=f"ed_raca_{idx}")
                         
                         url_atual = animal.get('url_instituicao', '')
-                        ed_url = st.text_input("URL da Instituição (Link Completo)", url_atual, key=f"ed_url_{idx}", placeholder="https://exemplo.com")
+                        ed_url = st.text_input("URL da Instituição/Rede Social", url_atual, key=f"ed_url_{idx}")
                         
-                        ed_saude = st.text_area("Estado de Saúde / Dados do Adotante", animal['saude'], key=f"ed_saude_{idx}")
+                        ed_saude = st.text_area("Estado de Saúde / Observações", animal['saude'], key=f"ed_saude_{idx}")
                         ed_zap = st.text_input("WhatsApp de Contato", animal['whatsapp'], key=f"ed_zap_{idx}")
                         
                         col_salvar, col_cancelar = st.columns(2)
@@ -161,7 +160,7 @@ if pagina == "Fichas Técnicas":
                                     "whatsapp": ed_zap
                                 })
                                 st.session_state.editando_idx = None
-                                st.success("Dados atualizados!")
+                                st.success("Dados atualizados com sucesso!")
                                 st.rerun()
                         with col_cancelar:
                             if st.button("❌ Cancelar", key=f"cancel_btn_{idx}"):
@@ -169,7 +168,7 @@ if pagina == "Fichas Técnicas":
                                 st.rerun()
 
                     else:
-                        # VISUALIZAÇÃO NORMAL
+                        # VISUALIZAÇÃO NORMAL DA FICHA
                         col_tit, col_edit, col_del = st.columns([2.5, 0.8, 0.7])
                         with col_tit:
                             st.header(f"Ficha: {animal['nome']}")
@@ -183,16 +182,16 @@ if pagina == "Fichas Técnicas":
                                 st.rerun()
 
                         st.write(f"**Idade Estimada:** {animal['idade']} | **Raça:** {animal.get('raca', 'SRD')}")
-                        st.write(f"**Estado de Saúde / Info Adotante:** {animal['saude']}")
-                        st.info("📍 Referência: São Paulo/SP")
+                        st.write(f"**Estado de Saúde:** {animal['saude']}")
+                        st.info("📍 Localização de Referência: São Paulo/SP")
 
-                        # BOTÕES DE AÇÃO (WhatsApp e Redes Sociais)
+                        # BOTÕES DE INTERAÇÃO SOCIAL
                         st.markdown("---")
                         c_whats, c_web = st.columns(2)
                         
                         with c_whats:
                             zap_animal = animal.get('whatsapp', '5511999999999')
-                            texto_msg = f"Olá! Vi o animal {animal['nome']} no PetHub e gostaria de informações."
+                            texto_msg = f"Olá! Vi o animal {animal['nome']} no PetHub e gostaria de mais informações."
                             link_whats = f"https://wa.me/{zap_animal}?text={urllib.parse.quote(texto_msg)}"
                             st.link_button(f"📲 Interesse em {animal['nome']}", link_whats, use_container_width=True)
                         
@@ -203,10 +202,10 @@ if pagina == "Fichas Técnicas":
                         with st.expander("📄 Ver Termos e Responsabilidades de Adoção"):
                             st.markdown("""
                                 <div style="background-color: #262730; padding: 15px; border-radius: 5px; border-left: 5px solid #ff4b4b;">
-                                    <strong style="color: white;">AVISO IMPORTANTE:</strong><br>
+                                    <strong style="color: white;">AVISO LEGAL (Lei 9.605/98):</strong><br>
                                     <p style="color: white; margin-top: 5px;">
-                                        A adoção é um compromisso legal e vitalício (Lei Federal 9.605/98). 
-                                        O abandono de animais é crime com pena de detenção.
+                                        A adoção é um compromisso vitalício. O abandono de animais é crime punível com detenção e multa.
+                                        Certifique-se de ter recursos para alimentação e cuidados veterinários.
                                     </p>
                                 </div>
                             """, unsafe_allow_html=True)
@@ -216,7 +215,7 @@ if pagina == "Fichas Técnicas":
 # ==========================================
 elif pagina == "Cadastrar Novo Pet":
     st.title("📝 Cadastrar Nova Ficha Técnica")
-    st.write("Interface administrativa para inclusão de novos animais e gestão de dados.")
+    st.write("Interface administrativa para inclusão de novos animais no sistema sincronizado.")
 
     with st.form("form_cadastro", clear_on_submit=True):
         st.write("### Dados do Animal")
@@ -228,11 +227,11 @@ elif pagina == "Cadastrar Novo Pet":
             raca = st.text_input("Raça", placeholder="Ex: SRD")
         
         with col_cad2:
-            whatsapp_input = st.text_input("WhatsApp", placeholder="Ex: 5511999999999", help="DDD + Número sem espaços")
-            url_dinamica = st.text_input("Link da Rede Social ou Site do Pet", placeholder="https://instagram.com/seu_perfil")
+            whatsapp_input = st.text_input("WhatsApp para Contato", placeholder="Ex: 5511999999999", help="DDD + Número sem espaços")
+            url_dinamica = st.text_input("Link da Rede Social (Instagram/Site)", placeholder="https://instagram.com/perfil")
             foto_arquivo = st.file_uploader("Selecione a foto (JPEG, PNG)", type=["jpg", "jpeg", "png"])
             
-        saude = st.text_area("Observações de Saúde / Adotante", placeholder="Vacinada, castrada ou dados do novo dono...")
+        saude = st.text_area("Observações de Saúde / Histórico", placeholder="Vacinada, castrada, dócil...")
         
         st.divider()
         botao_salvar = st.form_submit_button("Finalizar Cadastro e Salvar")
@@ -241,31 +240,32 @@ elif pagina == "Cadastrar Novo Pet":
             if nome and foto_arquivo and whatsapp_input:
                 img_processada = Image.open(foto_arquivo)
                 
-                # --- LÓGICA DE SALVAMENTO NO GOOGLE SHEETS ---
+                # --- INTEGRAÇÃO GOOGLE SHEETS ---
                 planilha = conectar_google_sheets()
-                if planilha:
+                if planilha is not None:
                     try:
                         data_hoje = datetime.now().strftime("%d/%m/%Y")
                         nova_linha = [data_hoje, nome, idade, raca, saude, whatsapp_input, url_dinamica]
                         planilha.append_row(nova_linha)
-                    except Exception:
-                        # Silencia timeouts se o dado já foi enviado com sucesso (Erro 200)
-                        pass
-                
-                novo_pet = {
-                    "nome": nome,
-                    "idade": idade,
-                    "raca": raca,
-                    "saude": saude,
-                    "whatsapp": whatsapp_input.replace(" ", "").replace("-", ""),
-                    "url_instituicao": url_dinamica if url_dinamica else "https://www.google.com",
-                    "foto": img_processada
-                }
-                
-                st.session_state.lista_animais.append(novo_pet)
-                st.success(f"✅ Sucesso! A ficha de {nome} foi gerada e armazenada na Planilha e no Site.")
+                        
+                        # Sincronização com o estado da sessão (Site)
+                        novo_pet = {
+                            "nome": nome,
+                            "idade": idade,
+                            "raca": raca,
+                            "saude": saude,
+                            "whatsapp": whatsapp_input.replace(" ", "").replace("-", ""),
+                            "url_instituicao": url_dinamica if url_dinamica else "https://www.google.com",
+                            "foto": img_processada
+                        }
+                        st.session_state.lista_animais.append(novo_pet)
+                        st.success(f"✅ Sucesso! A ficha de {nome} foi salva na Planilha e no PetHub.")
+                    except Exception as e:
+                        st.error(f"❌ Erro ao gravar dados: {e}")
+                else:
+                    st.error("❌ Falha de conexão. Verifique as credenciais no Secrets.")
             else:
-                st.error("❌ Preencha Nome, Foto e WhatsApp para prosseguir.")
+                st.error("❌ Preencha os campos obrigatórios (Nome, Foto e WhatsApp).")
 
 # ==========================================
 # 7. PÁGINA: GUIA DE POSSE RESPONSÁVEL
@@ -274,19 +274,19 @@ else:
     st.title("📚 Guia da Posse Responsável")
     st.markdown("""
     ### Educação e Conscientização Comunitária
-    A adoção consciente transforma a realidade da fauna urbana em São Paulo e garante que o animal não sofra maus-tratos.
+    A adoção consciente transforma a realidade da fauna urbana e garante a segurança dos animais.
     
-    1. **Bem-Estar:** Alimentação de qualidade, vacinação anual e vermifugação periódica.
-    2. **Segurança:** Nunca permita acesso livre à rua. Telas em janelas e coleiras são essenciais.
-    3. **Sociedade:** A castração é a única forma eficaz de controle populacional.
-    4. **Compromisso:** Cães e gatos vivem em média 15 anos. Esteja preparado para cuidar dele em todas as fases.
+    1. **Bem-Estar:** Alimentação de qualidade e vacinação anual (V10/Raiva).
+    2. **Segurança:** Telas em janelas para gatos e coleiras com identificação para cães.
+    3. **Sociedade:** A castração é fundamental para evitar o abandono e doenças.
+    4. **Compromisso:** Um animal vive em média 15 anos. Esteja preparado para todas as fases.
     
     ---
-    *Projeto de extensão universitária - Análise e Desenvolvimento de Sistemas.*
+    *Projeto desenvolvido como atividade de extensão universitária.*
     """)
 
 # ==========================================
-# 8. RODAPÉ ACADÊMICO E ODS (COMPLETO)
+# 8. RODAPÉ ACADÊMICO E ODS (OFICIAL ADS)
 # ==========================================
 st.divider()
 st.markdown("""
@@ -295,14 +295,14 @@ st.markdown("""
     <strong style="font-size: 1.1em;">2º Semestre - Projeto de Extensão Universitária</strong><br>
     <strong>SÃO PAULO - GRANDE SÃO PAULO/SP</strong><br><br>
     <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
-        <span style="background-color: #4ca146; color: white; padding: 10px 20px; border-radius: 25px; font-weight: bold; min-width: 200px;">ODS 3: Saúde e Bem-Estar</span>
-        <span style="background-color: #f99d26; color: white; padding: 10px 20px; border-radius: 25px; font-weight: bold; min-width: 200px;">ODS 11: Cidades Sustentáveis</span>
-        <span style="background-color: #007db8; color: white; padding: 10px 20px; border-radius: 25px; font-weight: bold; min-width: 200px;">ODS 15: Vida Terrestre</span>
+        <span style="background-color: #4ca146; color: white; padding: 10px 20px; border-radius: 25px; font-weight: bold; min-width: 180px;">ODS 3: Saúde e Bem-Estar</span>
+        <span style="background-color: #f99d26; color: white; padding: 10px 20px; border-radius: 25px; font-weight: bold; min-width: 180px;">ODS 11: Cidades Sustentáveis</span>
+        <span style="background-color: #007db8; color: white; padding: 10px 20px; border-radius: 25px; font-weight: bold; min-width: 180px;">ODS 15: Vida Terrestre</span>
     </div>
     <br>
     <p style="font-style: italic; max-width: 800px; margin: 10px auto 0 auto;">
-        "Este software integra a tecnologia à causa animal, permitindo que ONGs e estabelecimentos comerciais monitorem a saúde 
-        e a segurança de animais adotados, prevenindo maus-tratos e fidelizando o adotante através do suporte contínuo."
+        "Este software integra a tecnologia à causa animal, permitindo que ONGs e estabelecimentos monitorem a saúde 
+        e a segurança de animais adotados, prevenindo maus-tratos."
     </p>
 </div>
 """, unsafe_allow_html=True)
