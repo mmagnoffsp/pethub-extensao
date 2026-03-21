@@ -1,4 +1,4 @@
-# PROJETO: pethub.py voltado a causa animal para adotantes via casa de ração ou através de ongs
+# PROJETO: guardiao_pet_sp.py voltado a causa animal para adotantes via casa de ração ou através de ongs
 # Projeto de Extensão Universitária - Análise e Desenvolvimento de Sistemas
 # Data da última atualização: "20/03/2026"
 
@@ -15,8 +15,8 @@ from datetime import datetime # Para registro de data nos cadastros
 # 1. CONFIGURAÇÃO DA PÁGINA (Metadata)
 # ==========================================
 st.set_page_config(
-    page_title="PetHub - Fichas Técnicas",
-    page_icon="🐾",
+    page_title="Projeto Guardião Pet SP - Fichas Técnicas",
+    page_icon="🛡️",
     layout="wide" 
 )
 
@@ -36,7 +36,7 @@ def conectar_google_sheets():
         client = gspread.authorize(creds)
 
         # Abre a planilha pelo nome exato configurado no Google Drive
-        return client.open("PetHub - Banco de Dados").sheet1
+        return client.open("Projeto Guardião Pet SP - Banco de Dados").sheet1
     except Exception as e:
         # Filtro para ignorar o falso positivo [200] que o Google às vezes retorna em conexões rápidas
         if "200" not in str(e):
@@ -90,7 +90,7 @@ if 'editando_idx' not in st.session_state:
 # 4. BARRA LATERAL (NAVEGAÇÃO E IMPACTO SOCIAL)
 # ==========================================
 with st.sidebar:
-    st.title("🐾 PetHub")
+    st.title("🛡️ Guardião Pet SP")
     st.write("Sistema de Gestão de Adoção Consciente")
     st.divider()
     
@@ -103,7 +103,7 @@ with st.sidebar:
     st.write("### Divulgue o Projeto")
     
     # URL do projeto hospedado (ajustar conforme seu link final)
-    url_site = "https://projeto-universitario-ads.streamlit.app"
+    url_site = "https://guardiao-pet-sp.streamlit.app"
     qr_img = gerar_qr_code(url_site)
     
     st.image(qr_img, caption="Acesse o Portal pelo Celular", width=250)
@@ -111,19 +111,20 @@ with st.sidebar:
     st.download_button(
         label="⬇️ Baixar QR Code para Impressão",
         data=qr_img,
-        file_name="qrcode_pethub.png",
+        file_name="qrcode_guardiao_pet_sp.png",
         mime="image/png"
     )
-    # ==========================================
+    
+# ==========================================
 # 5. PÁGINA: FICHAS TÉCNICAS (VISUALIZAÇÃO E EDIÇÃO)
 # ==========================================
 if pagina == "Fichas Técnicas":
-    st.title("🐾 Fichas Técnicas de Animais")
+    st.title("🐾 Fichas de Proteção Animal")
     st.subheader("Dados detalhados para uma adoção segura e acompanhamento pós-adoção")
     st.markdown("---")
 
     if not st.session_state.lista_animais:
-        st.info("Nenhum animal cadastrado no momento.")
+        st.info("Nenhum animal cadastrado no momento no Guardião Pet SP.")
     else:
         for idx, animal in enumerate(st.session_state.lista_animais):
             with st.container(border=True):
@@ -191,7 +192,7 @@ if pagina == "Fichas Técnicas":
                         
                         with c_whats:
                             zap_animal = animal.get('whatsapp', '5511999999999')
-                            texto_msg = f"Olá! Vi o animal {animal['nome']} no PetHub e gostaria de mais informações."
+                            texto_msg = f"Olá! Vi o animal {animal['nome']} no Guardião Pet SP e gostaria de mais informações."
                             link_whats = f"https://wa.me/{zap_animal}?text={urllib.parse.quote(texto_msg)}"
                             st.link_button(f"📲 Interesse em {animal['nome']}", link_whats, use_container_width=True)
                         
@@ -214,7 +215,7 @@ if pagina == "Fichas Técnicas":
 # 6. PÁGINA: CADASTRAR NOVO PET
 # ==========================================
 elif pagina == "Cadastrar Novo Pet":
-    st.title("📝 Cadastrar Nova Ficha Técnica")
+    st.title("📝 Cadastro Guardião Pet SP")
     st.write("Interface administrativa para inclusão de novos animais no sistema sincronizado.")
 
     with st.form("form_cadastro", clear_on_submit=True):
@@ -259,7 +260,7 @@ elif pagina == "Cadastrar Novo Pet":
                             "foto": img_processada
                         }
                         st.session_state.lista_animais.append(novo_pet)
-                        st.success(f"✅ Sucesso! A ficha de {nome} foi salva na Planilha e no PetHub.")
+                        st.success(f"✅ Sucesso! A ficha de {nome} foi salva na Planilha e no Guardião Pet SP.")
                     except Exception as e:
                         st.error(f"❌ Erro ao gravar dados: {e}")
                 else:
@@ -271,7 +272,7 @@ elif pagina == "Cadastrar Novo Pet":
 # 7. PÁGINA: GUIA DE POSSE RESPONSÁVEL
 # ==========================================
 else:
-    st.title("📚 Guia da Posse Responsável")
+    st.title("📚 Guia do Guardião Responsável")
     st.markdown("""
     ### Educação e Conscientização Comunitária
     A adoção consciente transforma a realidade da fauna urbana e garante a segurança dos animais.
@@ -293,7 +294,7 @@ st.markdown("""
 <div style="text-align: center; background-color: #f0f2f6; padding: 30px; border-radius: 12px; color: #31333F; border: 1px solid #d1d5db;">
     <h3 style="margin-top: 0; color: #1f77b4;">Carlos Magno | ADS - Anhembi Morumbi</h3>
     <strong style="font-size: 1.1em;">2º Semestre - Projeto de Extensão Universitária</strong><br>
-    <strong>SÃO PAULO - GRANDE SÃO PAULO/SP</strong><br><br>
+    <strong>SÃO PAULO - PENHA / VILA ESPERANÇA</strong><br><br>
     <div style="display: flex; justify-content: center; gap: 20px; flex-wrap: wrap;">
         <span style="background-color: #4ca146; color: white; padding: 10px 20px; border-radius: 25px; font-weight: bold; min-width: 180px;">ODS 3: Saúde e Bem-Estar</span>
         <span style="background-color: #f99d26; color: white; padding: 10px 20px; border-radius: 25px; font-weight: bold; min-width: 180px;">ODS 11: Cidades Sustentáveis</span>
@@ -301,7 +302,7 @@ st.markdown("""
     </div>
     <br>
     <p style="font-style: italic; max-width: 800px; margin: 10px auto 0 auto;">
-        "Este software integra a tecnologia à causa animal, permitindo que ONGs e estabelecimentos monitorem a saúde 
+        "Este software integra a tecnologia à causa animal através do Projeto Guardião Pet SP, permitindo que ONGs e estabelecimentos monitorem a saúde 
         e a segurança de animais adotados, prevenindo maus-tratos."
     </p>
 </div>
