@@ -51,6 +51,7 @@ def conectar_google_sheets():
         if "200" not in str(e):
             st.error(f"Erro de conexão real: {e}")
         return None
+
 # ==========================================
 # 2. FUNÇÃO PARA GERAR O QR CODE DE DIVULGAÇÃO
 # ==========================================
@@ -139,6 +140,7 @@ if pagina == "Fichas Técnicas":
                 col1, col2 = st.columns([1, 1.5])
                 
                 with col1:
+                    # Ajustado para usar o parâmetro correto de largura
                     st.image(animal["foto"], use_container_width=True)
                 
                 with col2:
@@ -219,7 +221,7 @@ if pagina == "Fichas Técnicas":
                             """, unsafe_allow_html=True)
 
 # ==========================================
-# 6. PÁGINA: CADASTRAR NOVO PET
+# 6. PÁGINA: CADASTRAR NOVO PET (CORRIGIDA)
 # ==========================================
 elif pagina == "Cadastrar Novo Pet":
     st.title("📝 Cadastro Guardião Pet SP")
@@ -246,18 +248,20 @@ elif pagina == "Cadastrar Novo Pet":
         
         if botao_salvar:
             if nome and foto_arquivo and whatsapp_input:
-                img_processada = Image.open(foto_arquivo)
-                
-                # --- INTEGRAÇÃO GOOGLE SHEETS ---
-                planilha = conectar_google_sheets()
-                if planilha is not None:
-                    try:
+                try:
+                    # CORREÇÃO: Lemos os bytes da imagem para que ela persista na memória da sessão
+                    img_bytes = foto_arquivo.read()
+                    img_processada = Image.open(BytesIO(img_bytes)).convert("RGB")
+                    
+                    # --- INTEGRAÇÃO GOOGLE SHEETS ---
+                    planilha = conectar_google_sheets()
+                    if planilha is not None:
                         data_hoje = datetime.now().strftime("%d/%m/%Y")
                         # Ordem das colunas na planilha: Data, Nome, Idade, Raça, Saúde, WhatsApp, Link
                         nova_linha = [data_hoje, nome, idade, raca, saude, whatsapp_input, url_dinamica]
                         planilha.append_row(nova_linha)
                         
-                        # Sincronização com o estado da sessão (Site)
+                        # Sincronização com o estado da sessão (Dicionário do Site)
                         novo_pet = {
                             "nome": nome,
                             "idade": idade,
@@ -265,14 +269,14 @@ elif pagina == "Cadastrar Novo Pet":
                             "saude": saude,
                             "whatsapp": whatsapp_input.replace(" ", "").replace("-", ""),
                             "url_instituicao": url_dinamica if url_dinamica else "https://www.google.com",
-                            "foto": img_processada
+                            "foto": img_processada # Agora guardamos a imagem pronta para exibição
                         }
                         st.session_state.lista_animais.append(novo_pet)
                         st.success(f"✅ Sucesso! A ficha de {nome} foi salva na Planilha e no Guardião Pet SP.")
-                    except Exception as e:
-                        st.error(f"❌ Erro ao gravar dados: {e}")
-                else:
-                    st.error("❌ Falha de conexão. Verifique as credenciais no Secrets.")
+                    else:
+                        st.error("❌ Falha de conexão. Verifique as credenciais no Secrets.")
+                except Exception as e:
+                    st.error(f"❌ Erro ao gravar dados: {e}")
             else:
                 st.error("❌ Preencha os campos obrigatórios (Nome, Foto e WhatsApp).")
 
