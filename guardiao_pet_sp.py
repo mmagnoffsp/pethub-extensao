@@ -21,35 +21,36 @@ st.set_page_config(
     layout="wide" 
 )
 
-# --- FUNÇÃO DE CONEXÃO COM GOOGLE SHEETS (ADS - PROJETO DE EXTENSÃO) ---
+# --- FUNÇÃO DE CONEXÃO COM GOOGLE SHEETS (VERSÃO CORRIGIDA ADS) ---
 def conectar_google_sheets():
     try:
-        # Escopos modernos para garantir escrita e leitura sem erros
+        # Escopos para garantir escrita e leitura
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
 
-        # AJUSTE CRÍTICO: Carrega a chave garantindo que o nome do dicionário seja gcp_service_account
-        # conforme configurado no seu Secrets do Streamlit Cloud
-        if "gcp_service_account" not in st.secrets:
-            st.error("❌ A chave 'gcp_service_account' não foi encontrada nos Secrets.")
+        # 1. Busca nos Secrets usando a sua estrutura [connections.gsheets.json_key]
+        if "connections" in st.secrets and "gsheets" in st.secrets["connections"]:
+            creds_info = dict(st.secrets["connections"]["gsheets"]["json_key"])
+        else:
+            st.error("❌ A estrutura de segredos 'connections.gsheets.json_key' não foi encontrada.")
             return None
-
-        creds_info = dict(st.secrets["gcp_service_account"])
         
+        # 2. Limpeza da Private Key (essencial para evitar erro de formatação)
         if "private_key" in creds_info:
-            # Correção para o caractere de escape da chave privada (comum no Streamlit Cloud)
             creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n").strip()
 
+        # 3. Autorização
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
         client = gspread.authorize(creds)
 
-        # AJUSTE: Abertura por URL para maior estabilidade geográfica (São Paulo -> Servidor Cloud)
-        url_planilha = "https://docs.google.com/spreadsheets/d/1uiouxhZPb8jFLC4GUnSzsuqS2xKP2sEBv5IlkorCl-s/edit#gid=2068975896"
+        # 4. Abertura da planilha via URL salva nos Secrets
+        url_planilha = st.secrets["connections"]["gsheets"]["spreadsheet"]
         return client.open_by_url(url_planilha).sheet1
+        
     except Exception as e:
+        # Silencia erros de checklist do Streamlit (código 200) e foca em erros reais
         if "200" not in str(e):
-            st.error(f"Erro real de conexão: {e}")
+            st.error(f"Erro de conexão real: {e}")
         return None
-
 # ==========================================
 # 2. FUNÇÃO PARA GERAR O QR CODE DE DIVULGAÇÃO
 # ==========================================
