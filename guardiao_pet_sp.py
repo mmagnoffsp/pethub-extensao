@@ -1,6 +1,7 @@
 # PROJETO: guardiao_pet_sp.py voltado a causa animal para adotantes via casa de ração ou através de ongs
 # Projeto de Extensão Universitária - Análise e Desenvolvimento de Sistemas
-# Data da última atualização: "20/03/2026"
+# SÃO PAULO - PENHA / VILA ESPERANÇA
+# Data da última atualização: "21/03/2026"
 
 import streamlit as st # Biblioteca principal para criação da interface web
 import qrcode          # Biblioteca para geração de QR Codes dinâmicos
@@ -26,19 +27,25 @@ def conectar_google_sheets():
         # Escopos modernos para garantir escrita e leitura sem erros
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
 
-        # Carrega e limpa a chave explicitamente para evitar erro de padding e PEM no Streamlit Cloud
+        # AJUSTE CRÍTICO: Carrega a chave garantindo que o nome do dicionário seja gcp_service_account
+        # conforme configurado no seu Secrets do Streamlit Cloud
+        if "gcp_service_account" not in st.secrets:
+            st.error("❌ A chave 'gcp_service_account' não foi encontrada nos Secrets.")
+            return None
+
         creds_info = dict(st.secrets["gcp_service_account"])
+        
         if "private_key" in creds_info:
-            # Correção crítica para o caractere de escape da chave privada
+            # Correção para o caractere de escape da chave privada (comum no Streamlit Cloud)
             creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n").strip()
 
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
         client = gspread.authorize(creds)
 
-        # Abre a planilha pelo nome exato configurado no Google Drive
-        return client.open("Projeto Guardião Pet SP - Banco de Dados").sheet1
+        # AJUSTE: Abertura por URL para maior estabilidade geográfica (São Paulo -> Servidor Cloud)
+        url_planilha = "https://docs.google.com/spreadsheets/d/1uiouxhZPb8jFLC4GUnSzsuqS2xKP2sEBv5IlkorCl-s/edit#gid=2068975896"
+        return client.open_by_url(url_planilha).sheet1
     except Exception as e:
-        # Filtro para ignorar o falso positivo [200] que o Google às vezes retorna em conexões rápidas
         if "200" not in str(e):
             st.error(f"Erro real de conexão: {e}")
         return None
@@ -102,7 +109,7 @@ with st.sidebar:
     st.divider()
     st.write("### Divulgue o Projeto")
     
-    # URL do projeto hospedado (ajustar conforme seu link final)
+    # URL do projeto hospedado
     url_site = "https://guardiao-pet-sp.streamlit.app"
     qr_img = gerar_qr_code(url_site)
     
@@ -131,7 +138,6 @@ if pagina == "Fichas Técnicas":
                 col1, col2 = st.columns([1, 1.5])
                 
                 with col1:
-                    # Exibe a foto do animal (URL ou Objeto Image)
                     st.image(animal["foto"], use_container_width=True)
                 
                 with col2:
@@ -184,7 +190,7 @@ if pagina == "Fichas Técnicas":
 
                         st.write(f"**Idade Estimada:** {animal['idade']} | **Raça:** {animal.get('raca', 'SRD')}")
                         st.write(f"**Estado de Saúde:** {animal['saude']}")
-                        st.info("📍 Localização de Referência: São Paulo/SP")
+                        st.info("📍 Localização de Referência: São Paulo/SP - Penha")
 
                         # BOTÕES DE INTERAÇÃO SOCIAL
                         st.markdown("---")
@@ -246,6 +252,7 @@ elif pagina == "Cadastrar Novo Pet":
                 if planilha is not None:
                     try:
                         data_hoje = datetime.now().strftime("%d/%m/%Y")
+                        # Ordem das colunas na planilha: Data, Nome, Idade, Raça, Saúde, WhatsApp, Link
                         nova_linha = [data_hoje, nome, idade, raca, saude, whatsapp_input, url_dinamica]
                         planilha.append_row(nova_linha)
                         
@@ -271,7 +278,7 @@ elif pagina == "Cadastrar Novo Pet":
 # ==========================================
 # 7. PÁGINA: GUIA DE POSSE RESPONSÁVEL
 # ==========================================
-else:
+elif pagina == "Guia de Posse Responsável":
     st.title("📚 Guia do Guardião Responsável")
     st.markdown("""
     ### Educação e Conscientização Comunitária
