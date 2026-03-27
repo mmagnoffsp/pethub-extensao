@@ -1,7 +1,7 @@
 # PROJETO: guardiao_pet_sp.py voltado a causa animal para adotantes via casa de ração ou através de ongs
 # Projeto de Extensão Universitária - Análise e Desenvolvimento de Sistemas
 # SÃO PAULO - PENHA / VILA ESPERANÇA
-# Data da última atualização: "21/03/2026"
+# Data da última atualização: "26/03/2026"
 
 import streamlit as st # Biblioteca principal para criação da interface web
 import qrcode          # Biblioteca para geração de QR Codes dinâmicos
@@ -140,8 +140,8 @@ if pagina == "Fichas Técnicas":
                 col1, col2 = st.columns([1, 1.5])
                 
                 with col1:
-                    # Ajustado para usar o parâmetro correto de largura
-                    st.image(animal["foto"], use_container_width=True)
+                    # Atualizado para width='stretch' para remover o aviso do terminal
+                    st.image(animal["foto"], width='stretch')
                 
                 with col2:
                     # LÓGICA DE EDIÇÃO DINÂMICA
@@ -201,13 +201,21 @@ if pagina == "Fichas Técnicas":
                         
                         with c_whats:
                             zap_animal = animal.get('whatsapp', '5511999999999')
-                            texto_msg = f"Olá! Vi o animal {animal['nome']} no Guardião Pet SP e gostaria de mais informações."
+                            url_projeto = "https://guardiao-pet-sp.streamlit.app"
+                            
+                            # MENSAGEM CORRIGIDA: Inclui o link do site e detalhes do pet
+                            texto_msg = (
+                                f"Olá! Vi o animal *{animal['nome']}* ({animal.get('raca', 'SRD')}) "
+                                f"no portal Guardião Pet SP ({url_projeto}) "
+                                f"e gostaria de mais informações sobre o processo de adoção."
+                            )
+                            
                             link_whats = f"https://wa.me/{zap_animal}?text={urllib.parse.quote(texto_msg)}"
-                            st.link_button(f"📲 Interesse em {animal['nome']}", link_whats, use_container_width=True)
+                            st.link_button(f"📲 Interesse em {animal['nome']}", link_whats, width='stretch')
                         
                         with c_web:
                             url_alvo = animal.get('url_instituicao', 'https://www.google.com')
-                            st.link_button("🌐 Visitar Site / Rede Social", url_alvo, use_container_width=True)
+                            st.link_button("🌐 Visitar Site / Rede Social", url_alvo, width='stretch')
 
                         with st.expander("📄 Ver Termos e Responsabilidades de Adoção"):
                             st.markdown("""
