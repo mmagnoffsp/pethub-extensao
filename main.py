@@ -6,19 +6,13 @@ from google.oauth2.service_account import Credentials
 st.set_page_config(page_title="Guardião Pet SP", page_icon="🐾")
 
 # 2. Configuração de Acesso ao Google Sheets
-# O escopo define o que o "robô" pode fazer (ler e escrever)
 scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
 
 def conectar_google_sheets():
     try:
-        # Puxa as credenciais das Secrets (Configuradas no site do Streamlit)
         creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
         client = gspread.authorize(creds)
-        
-        # URL da sua planilha (ajustada para o formato de abertura)
         URL_PLANILHA = "https://docs.google.com/spreadsheets/d/1uiouxhZPb8jFLC4GUnSzsuqS2xKP2sEBv5IlkorCl-s/edit"
-        
-        # Abre a planilha pela URL e seleciona a primeira aba
         planilha = client.open_by_url(URL_PLANILHA)
         return planilha.sheet1
     except Exception as e:
@@ -42,9 +36,21 @@ if sheet:
         
         if enviado:
             if nome_pet:
-                # Adiciona os dados na próxima linha disponível da planilha
                 nova_linha = [nome_pet, especie, raca, idade]
                 sheet.append_row(nova_linha)
                 st.success(f"O pet {nome_pet} foi cadastrado com sucesso!")
             else:
                 st.warning("Por favor, preencha o nome do pet.")
+
+    # --- QR CODE INTEGRADO NO FINAL ---
+    st.markdown("---")
+    st.write("### 📲 Compartilhe este formulário")
+    # Gerador dinâmico de QR Code apontando para o seu link oficial
+    url_app = "https://guardiao-pet-sp-mmagnoff.streamlit.app"
+    qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={url_app}"
+    
+    col1, col2 = st.columns([1, 2])
+    with col1:
+        st.image(qr_url, caption="Aponte a câmera")
+    with col2:
+        st.info("Este QR Code leva diretamente para esta página de cadastro de pets.")
