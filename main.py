@@ -32,20 +32,29 @@ if sheet:
         raca = st.text_input("Raça")
         idade = st.number_input("Idade Aproximada", min_value=0, max_value=30)
         
+        # --- NOVO CAMPO TELEFONE ---
+        telefone = st.text_input("Telefone de Contato (com DDD)", placeholder="(11) 9XXXX-XXXX")
+        
         enviado = st.form_submit_button("Cadastrar Pet")
         
         if enviado:
-            if nome_pet:
-                nova_linha = [nome_pet, especie, raca, idade]
+            if nome_pet and telefone:
+                # IMPORTANTE: 
+                # Coluna A: Nome | B: Espécie | C: Raça | D: Idade
+                # Coluna E: Vacinas (deixamos vazio "" para não sobrescrever)
+                # Coluna F: Telefone
+                vacinas_placeholder = "-" 
+                
+                nova_linha = [nome_pet, especie, raca, idade, vacinas_placeholder, telefone]
+                
                 sheet.append_row(nova_linha)
-                st.success(f"O pet {nome_pet} foi cadastrado com sucesso!")
+                st.success(f"O pet {nome_pet} foi cadastrado com sucesso! Telefone salvo na coluna F.")
             else:
-                st.warning("Por favor, preencha o nome do pet.")
+                st.warning("Por favor, preencha o nome do pet e o telefone.")
 
     # --- QR CODE INTEGRADO NO FINAL ---
     st.markdown("---")
     st.write("### 📲 Compartilhe este formulário")
-    # Gerador dinâmico de QR Code apontando para o seu link oficial
     url_app = "https://guardiao-pet-sp-mmagnoff.streamlit.app"
     qr_url = f"https://api.qrserver.com/v1/create-qr-code/?size=200x200&data={url_app}"
     
