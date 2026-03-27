@@ -1,68 +1,75 @@
-# PROJETO: guardiao_pet_sp.py voltado a causa animal para adotantes via casa de ração ou através de ongs
-# Projeto de Extensão Universitária - Análise e Desenvolvimento de Sistemas
-# SÃO PAULO - PENHA / VILA ESPERANÇA
-# Data da última atualização: "26/03/2026"
+# ==============================================================================
+# PROJETO: guardiao_pet_sp.py - Tecnologia Aplicada à Causa Animal
+# DESENVOLVEDOR: Carlos Magno | ADS - Universidade Anhembi Morumbi
+# LOCALIDADE DE IMPACTO: São Paulo (Penha / Vila Esperança)
+# DATA DA ÚLTIMA ATUALIZAÇÃO: 26/03/2026
+# OBJETIVO: Sincronização de dados entre interface Streamlit e Google Sheets API
+# ==============================================================================
 
-import streamlit as st # Biblioteca principal para criação da interface web
-import qrcode          # Biblioteca para geração de QR Codes dinâmicos
-from io import BytesIO  # Gerencia o armazenamento temporário de dados binários (imagens)
-import urllib.parse    # Utilizado para formatar links de URL (importante para o WhatsApp)
-from PIL import Image   # Processamento de imagens (essencial para o upload de fotos JPEG)
-import gspread         # Biblioteca para integração com Google Sheets
-from google.oauth2.service_account import Credentials # Gestão de credenciais GCP
-from datetime import datetime # Para registro de data nos cadastros
+import streamlit as st # Engine principal para renderização de Web Apps reativos
+import qrcode          # Biblioteca para geração de matrizes de dados (Quick Response Code)
+from io import BytesIO  # Gerenciamento de buffers de memória para objetos binários (Imagens)
+import urllib.parse    # Parsing e codificação de caracteres para protocolos de URL (WhatsApp)
+from PIL import Image   # Biblioteca de manipulação de matrizes de pixels (Processamento Digital)
+import gspread         # Cliente Python para integração com a API do Google Sheets
+from google.oauth2.service_account import Credentials # Protocolo de segurança OAuth2 via Service Account
+from datetime import datetime # Objeto de manipulação de carimbos de tempo (Time-stamping)
 
-# ==========================================
-# 1. CONFIGURAÇÃO DA PÁGINA (Metadata)
-# ==========================================
+# ------------------------------------------------------------------------------
+# 1. CONFIGURAÇÃO DA VIEW (METADADOS DO NAVEGADOR)
+# ------------------------------------------------------------------------------
 st.set_page_config(
     page_title="Projeto Guardião Pet SP - Fichas Técnicas",
     page_icon="🛡️",
-    layout="wide" 
+    layout="wide" # Otimização do Viewport para telas horizontais (Dashboard Style)
 )
 
-# --- FUNÇÃO DE CONEXÃO COM GOOGLE SHEETS (VERSÃO CORRIGIDA ADS) ---
+# --- FUNÇÃO DE CONEXÃO: CAMADA DE PERSISTÊNCIA (GOOGLE SHEETS) ---
 def conectar_google_sheets():
+    """
+    Estabelece a conexão com a camada de dados externa.
+    Trabalha com o conceito de 'Secrets Management' para proteção de chaves de API.
+    """
     try:
-        # Escopos para garantir escrita e leitura
+        # Escopos de autorização (Read/Write) para Spreadsheets e Drive
         scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
 
-        # 1. Busca nos Secrets usando a sua estrutura [connections.gsheets.json_key]
+        # Recuperação das credenciais via dicionário de segredos do ambiente
         if "connections" in st.secrets and "gsheets" in st.secrets["connections"]:
             creds_info = dict(st.secrets["connections"]["gsheets"]["json_key"])
         else:
-            st.error("❌ A estrutura de segredos 'connections.gsheets.json_key' não foi encontrada.")
+            st.error("❌ Erro Crítico: Estrutura 'connections.gsheets.json_key' não detectada no arquivo de segredos.")
             return None
         
-        # 2. Limpeza da Private Key (essencial para evitar erro de formatação)
+        # Sanitização da string de chave privada (Escape de caracteres para formato PEM)
         if "private_key" in creds_info:
             creds_info["private_key"] = creds_info["private_key"].replace("\\n", "\n").strip()
 
-        # 3. Autorização
+        # Instanciação do objeto de credenciais e autorização do cliente
         creds = Credentials.from_service_account_info(creds_info, scopes=scope)
         client = gspread.authorize(creds)
 
-        # 4. Abertura da planilha via URL salva nos Secrets
+        # Acesso à instância da planilha via URL dinâmica
         url_planilha = st.secrets["connections"]["gsheets"]["spreadsheet"]
         return client.open_by_url(url_planilha).sheet1
         
     except Exception as e:
-        # Silencia erros de checklist do Streamlit (código 200) e foca em erros reais
+        # Tratamento de erro para interceptar falhas de rede ou autenticação
         if "200" not in str(e):
-            st.error(f"Erro de conexão real: {e}")
+            st.error(f"Falha de Comunicação com a API: {e}")
         return None
 
-# ==========================================
-# 2. FUNÇÃO PARA GERAR O QR CODE DE DIVULGAÇÃO
-# ==========================================
+# ------------------------------------------------------------------------------
+# 2. LÓGICA DE NEGÓCIO: GERADOR DE QR CODE
+# ------------------------------------------------------------------------------
 def gerar_qr_code(url):
     """
-    Cria um QR Code a partir de uma URL para facilitar o acesso via celular.
-    Retorna os bytes da imagem para serem exibidos no Streamlit.
+    Transforma strings de URL em representações gráficas binárias.
+    Retorna o valor em bytes para renderização direta ou download.
     """
     qr = qrcode.QRCode(
         version=1,
-        error_correction=qrcode.constants.ERROR_CORRECT_L,
+        error_correction=qrcode.constants.ERROR_CORRECT_L, # Nível de correção de erro (L = 7%)
         box_size=10,
         border=4,
     )
@@ -70,14 +77,15 @@ def gerar_qr_code(url):
     qr.make(fit=True)
     img = qr.make_image(fill_color="black", back_color="white")
     
-    # Converte a imagem para bytes para que o Streamlit possa exibir/baixar
+    # Uso de BytesIO como canal de streaming para evitar gravação em disco (I/O)
     buf = BytesIO()
     img.save(buf, format="PNG")
     return buf.getvalue()
 
-# ==========================================
-# 3. INICIALIZAÇÃO DO BANCO DE DADOS E ESTADOS
-# ==========================================
+# ------------------------------------------------------------------------------
+# 3. GERENCIAMENTO DE ESTADO (PERSISTÊNCIA EM SESSÃO)
+# ------------------------------------------------------------------------------
+# Implementação de 'Singleton' para a lista de animais na memória da sessão
 if 'lista_animais' not in st.session_state:
     st.session_state.lista_animais = [
         {
@@ -91,18 +99,19 @@ if 'lista_animais' not in st.session_state:
         }
     ]
 
-# Controle de estado para edição dinâmica de fichas
+# Variável de controle para o estado de edição da UI
 if 'editando_idx' not in st.session_state:
     st.session_state.editando_idx = None
 
-# ==========================================
-# 4. BARRA LATERAL (NAVEGAÇÃO E IMPACTO SOCIAL)
-# ==========================================
+# ------------------------------------------------------------------------------
+# 4. COMPONENTES DA BARRA LATERAL (SIDEBAR)
+# ------------------------------------------------------------------------------
 with st.sidebar:
     st.title("🛡️ Guardião Pet SP")
     st.write("Sistema de Gestão de Adoção Consciente")
     st.divider()
     
+    # Componente de rádio para controle de fluxo (Navegação SPA - Single Page App)
     pagina = st.radio(
         "Navegar por:", 
         ["Fichas Técnicas", "Cadastrar Novo Pet", "Guia de Posse Responsável"]
@@ -111,12 +120,13 @@ with st.sidebar:
     st.divider()
     st.write("### Divulgue o Projeto")
     
-    # URL do projeto hospedado
+    # URL de produção do Web App
     url_site = "https://guardiao-pet-sp.streamlit.app"
     qr_img = gerar_qr_code(url_site)
     
     st.image(qr_img, caption="Acesse o Portal pelo Celular", width=250)
     
+    # Botão de exportação de dados binários
     st.download_button(
         label="⬇️ Baixar QR Code para Impressão",
         data=qr_img,
@@ -124,61 +134,60 @@ with st.sidebar:
         mime="image/png"
     )
     
-# ==========================================
-# 5. PÁGINA: FICHAS TÉCNICAS (VISUALIZAÇÃO E EDIÇÃO)
-# ==========================================
+# ------------------------------------------------------------------------------
+# 5. MÓDULO: VISUALIZAÇÃO E OPERAÇÕES CRUD (READ, UPDATE, DELETE)
+# ------------------------------------------------------------------------------
 if pagina == "Fichas Técnicas":
     st.title("🐾 Fichas de Proteção Animal")
     st.subheader("Dados detalhados para uma adoção segura e acompanhamento pós-adoção")
     st.markdown("---")
 
     if not st.session_state.lista_animais:
-        st.info("Nenhum animal cadastrado no momento no Guardião Pet SP.")
+        st.info("Log: Nenhum animal instanciado no sistema no momento.")
     else:
+        # Iteração sobre a estrutura de dados (List of Dicts)
         for idx, animal in enumerate(st.session_state.lista_animais):
             with st.container(border=True):
                 col1, col2 = st.columns([1, 1.5])
                 
                 with col1:
-                    # Atualizado para width='stretch' para remover o aviso do terminal
+                    # Renderização de imagem com ajuste de largura 'stretch' (Responsividade)
                     st.image(animal["foto"], width='stretch')
                 
                 with col2:
-                    # LÓGICA DE EDIÇÃO DINÂMICA
+                    # LÓGICA DE EDIÇÃO DINÂMICA (UPDATE)
                     if st.session_state.editando_idx == idx:
                         st.markdown(f"### 📝 Editando Ficha: {animal['nome']}")
                         
+                        # Campos de Input para atualização de atributos do objeto
                         ed_nome = st.text_input("Nome do Animal", animal['nome'], key=f"ed_nome_{idx}")
                         ed_idade = st.text_input("Idade Estimada", animal['idade'], key=f"ed_idade_{idx}")
                         ed_raca = st.text_input("Raça", animal.get('raca', 'SRD'), key=f"ed_raca_{idx}")
                         
                         url_atual = animal.get('url_instituicao', '')
-                        ed_url = st.text_input("URL da Instituição/Rede Social", url_atual, key=f"ed_url_{idx}")
+                        ed_url = st.text_input("URL da Instituição", url_atual, key=f"ed_url_{idx}")
                         
-                        ed_saude = st.text_area("Estado de Saúde / Observações", animal['saude'], key=f"ed_saude_{idx}")
+                        ed_saude = st.text_area("Estado de Saúde", animal['saude'], key=f"ed_saude_{idx}")
                         ed_zap = st.text_input("WhatsApp de Contato", animal['whatsapp'], key=f"ed_zap_{idx}")
                         
                         col_salvar, col_cancelar = st.columns(2)
                         with col_salvar:
                             if st.button("💾 Salvar Alterações", key=f"save_btn_{idx}"):
+                                # Mutação do dicionário dentro da lista no session_state
                                 st.session_state.lista_animais[idx].update({
-                                    "nome": ed_nome,
-                                    "idade": ed_idade,
-                                    "raca": ed_raca,
-                                    "url_instituicao": ed_url,
-                                    "saude": ed_saude,
-                                    "whatsapp": ed_zap
+                                    "nome": ed_nome, "idade": ed_idade, "raca": ed_raca,
+                                    "url_instituicao": ed_url, "saude": ed_saude, "whatsapp": ed_zap
                                 })
                                 st.session_state.editando_idx = None
-                                st.success("Dados atualizados com sucesso!")
-                                st.rerun()
+                                st.success("Atualização persistida localmente!")
+                                st.rerun() # Dispara novo ciclo de renderização
                         with col_cancelar:
                             if st.button("❌ Cancelar", key=f"cancel_btn_{idx}"):
                                 st.session_state.editando_idx = None
                                 st.rerun()
 
                     else:
-                        # VISUALIZAÇÃO NORMAL DA FICHA
+                        # VISUALIZAÇÃO ESTÁTICA (READ)
                         col_tit, col_edit, col_del = st.columns([2.5, 0.8, 0.7])
                         with col_tit:
                             st.header(f"Ficha: {animal['nome']}")
@@ -187,6 +196,7 @@ if pagina == "Fichas Técnicas":
                                 st.session_state.editando_idx = idx
                                 st.rerun()
                         with col_del:
+                            # Operação de Deleção de Item (DELETE)
                             if st.button("🗑️ Excluir", key=f"btn_del_{idx}"):
                                 st.session_state.lista_animais.pop(idx)
                                 st.rerun()
@@ -195,7 +205,7 @@ if pagina == "Fichas Técnicas":
                         st.write(f"**Estado de Saúde:** {animal['saude']}")
                         st.info("📍 Localização de Referência: São Paulo/SP - Penha")
 
-                        # BOTÕES DE INTERAÇÃO SOCIAL
+                        # INTEGRAÇÃO COM MENSAGERIA EXTERNA (WhatsApp API)
                         st.markdown("---")
                         c_whats, c_web = st.columns(2)
                         
@@ -203,7 +213,7 @@ if pagina == "Fichas Técnicas":
                             zap_animal = animal.get('whatsapp', '5511999999999')
                             url_projeto = "https://guardiao-pet-sp.streamlit.app"
                             
-                            # MENSAGEM CORRIGIDA: Inclui o link do site e detalhes do pet
+                            # Template de String para mensagem automática (Interação Humano-Computador)
                             texto_msg = (
                                 f"Olá! Vi o animal *{animal['nome']}* ({animal.get('raca', 'SRD')}) "
                                 f"no portal Guardião Pet SP ({url_projeto}) "
@@ -217,6 +227,7 @@ if pagina == "Fichas Técnicas":
                             url_alvo = animal.get('url_instituicao', 'https://www.google.com')
                             st.link_button("🌐 Visitar Site / Rede Social", url_alvo, width='stretch')
 
+                        # Componente Expander para Avisos Legais (Conformidade com a Lei de Crimes Ambientais)
                         with st.expander("📄 Ver Termos e Responsabilidades de Adoção"):
                             st.markdown("""
                                 <div style="background-color: #262730; padding: 15px; border-radius: 5px; border-left: 5px solid #ff4b4b;">
@@ -228,13 +239,14 @@ if pagina == "Fichas Técnicas":
                                 </div>
                             """, unsafe_allow_html=True)
 
-# ==========================================
-# 6. PÁGINA: CADASTRAR NOVO PET (CORRIGIDA)
-# ==========================================
+# ------------------------------------------------------------------------------
+# 6. MÓDULO: CADASTRO DE DADOS (CREATE)
+# ------------------------------------------------------------------------------
 elif pagina == "Cadastrar Novo Pet":
     st.title("📝 Cadastro Guardião Pet SP")
     st.write("Interface administrativa para inclusão de novos animais no sistema sincronizado.")
 
+    # Uso de st.form para otimização de POST de dados
     with st.form("form_cadastro", clear_on_submit=True):
         st.write("### Dados do Animal")
         col_cad1, col_cad2 = st.columns(2)
@@ -255,42 +267,40 @@ elif pagina == "Cadastrar Novo Pet":
         botao_salvar = st.form_submit_button("Finalizar Cadastro e Salvar")
         
         if botao_salvar:
+            # Validação de campos obrigatórios (Regra de Negócio)
             if nome and foto_arquivo and whatsapp_input:
                 try:
-                    # CORREÇÃO: Lemos os bytes da imagem para que ela persista na memória da sessão
+                    # Leitura binária e processamento via biblioteca PIL
                     img_bytes = foto_arquivo.read()
                     img_processada = Image.open(BytesIO(img_bytes)).convert("RGB")
                     
-                    # --- INTEGRAÇÃO GOOGLE SHEETS ---
+                    # --- SINCRONIZAÇÃO EXTERNA (GOOGLE SHEETS) ---
                     planilha = conectar_google_sheets()
                     if planilha is not None:
                         data_hoje = datetime.now().strftime("%d/%m/%Y")
-                        # Ordem das colunas na planilha: Data, Nome, Idade, Raça, Saúde, WhatsApp, Link
+                        # Preparação da tupla/lista para inserção na linha da planilha
                         nova_linha = [data_hoje, nome, idade, raca, saude, whatsapp_input, url_dinamica]
                         planilha.append_row(nova_linha)
                         
-                        # Sincronização com o estado da sessão (Dicionário do Site)
+                        # --- ATUALIZAÇÃO DO ESTADO LOCAL ---
                         novo_pet = {
-                            "nome": nome,
-                            "idade": idade,
-                            "raca": raca,
-                            "saude": saude,
+                            "nome": nome, "idade": idade, "raca": raca, "saude": saude,
                             "whatsapp": whatsapp_input.replace(" ", "").replace("-", ""),
                             "url_instituicao": url_dinamica if url_dinamica else "https://www.google.com",
-                            "foto": img_processada # Agora guardamos a imagem pronta para exibição
+                            "foto": img_processada 
                         }
                         st.session_state.lista_animais.append(novo_pet)
                         st.success(f"✅ Sucesso! A ficha de {nome} foi salva na Planilha e no Guardião Pet SP.")
                     else:
-                        st.error("❌ Falha de conexão. Verifique as credenciais no Secrets.")
+                        st.error("❌ Erro na Camada de Dados: Verifique as credenciais no Secrets.")
                 except Exception as e:
-                    st.error(f"❌ Erro ao gravar dados: {e}")
+                    st.error(f"❌ Exceção Crítica ao gravar dados: {e}")
             else:
-                st.error("❌ Preencha os campos obrigatórios (Nome, Foto e WhatsApp).")
+                st.error("❌ Erro de Validação: Preencha os campos obrigatórios.")
 
-# ==========================================
-# 7. PÁGINA: GUIA DE POSSE RESPONSÁVEL
-# ==========================================
+# ------------------------------------------------------------------------------
+# 7. MÓDULO: DOCUMENTAÇÃO E EDUCAÇÃO
+# ------------------------------------------------------------------------------
 elif pagina == "Guia de Posse Responsável":
     st.title("📚 Guia do Guardião Responsável")
     st.markdown("""
@@ -306,9 +316,9 @@ elif pagina == "Guia de Posse Responsável":
     *Projeto desenvolvido como atividade de extensão universitária.*
     """)
 
-# ==========================================
-# 8. RODAPÉ ACADÊMICO E ODS (OFICIAL ADS)
-# ==========================================
+# ------------------------------------------------------------------------------
+# 8. RODAPÉ INSTITUCIONAL E ALINHAMENTO COM ODS (OFICIAL ADS)
+# ------------------------------------------------------------------------------
 st.divider()
 st.markdown("""
 <div style="text-align: center; background-color: #f0f2f6; padding: 30px; border-radius: 12px; color: #31333F; border: 1px solid #d1d5db;">
