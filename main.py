@@ -48,23 +48,3 @@ if sheet:
                 st.success(f"O pet {nome_pet} foi cadastrado com sucesso!")
             else:
                 st.warning("Por favor, preencha o nome do pet.")
-
----
-
-### Próximos passos para colocar no ar:
-
-1.  **Salvar e Enviar:** * No VS Code, salve o arquivo.
-    * No terminal, digite:
-      `git add .`
-      `git commit -m "Fix: Conexão via URL e interface limpa"`
-      `git push origin main`
-
-2.  **Verificar a Planilha (Crucial!):**
-    * Abra sua planilha no navegador.
-    * Clique em **Compartilhar**.
-    * Verifique se o e-mail `pethub-operator@pethub-extensao2026.iam.gserviceaccount.com` está lá como **Editor**. Se não estiver, o código dará erro de "Permission Denied".
-
-3.  **Aguardar o Deploy:**
-    * O site [https://guardiao-pet-sp-mmagnoff.streamlit.app](https://guardiao-pet-sp-mmagnoff.streamlit.app) vai atualizar sozinho em cerca de 30 segundos após o seu `git push`.
-
-**Quer que eu fique de olho no link para ver se o formulário aparece ou prefere que eu já prepare o QR Code oficial?**
