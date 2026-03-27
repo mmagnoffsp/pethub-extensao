@@ -4,7 +4,11 @@ from google.oauth2.service_account import Credentials
 import urllib.parse
 
 # 1. Configurações Iniciais da Página
-st.set_page_config(page_title="Guardião Pet SP", page_icon="🐾", layout="centered")
+st.set_page_config(
+    page_title="Guardião Pet SP", 
+    page_icon="🐾", 
+    layout="centered"
+)
 
 # 2. Configuração de Acesso ao Google Sheets
 scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
@@ -12,10 +16,13 @@ scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis
 def conectar_google_sheets():
     try:
         # Busca as credenciais configuradas no Streamlit Secrets
-        creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
+        creds = Credentials.from_service_account_info(
+            st.secrets["gcp_service_account"], 
+            scopes=scope
+        )
         client = gspread.authorize(creds)
         
-        # Sua URL da planilha (Mantenha esta URL pois é a do seu projeto)
+        # URL da planilha do seu projeto
         URL_PLANILHA = "https://docs.google.com/spreadsheets/d/1uiouxhZPb8jFLC4GUnSzsuqS2xKP2sEBv5IlkorCl-s/edit"
         planilha = client.open_by_url(URL_PLANILHA)
         return planilha.sheet1
@@ -23,7 +30,7 @@ def conectar_google_sheets():
         st.error(f"Erro de conexão com o Banco de Dados: {e}")
         return None
 
-# 3. Interface do Usuário
+# 3. Interface do Usuário e Títulos
 st.title("🐾 Guardião Pet SP")
 st.subheader("Sistema de Cadastro de Pets - Projeto PetHub")
 st.markdown("---")
@@ -37,33 +44,47 @@ if sheet:
         
         with col1:
             nome_pet = st.text_input("Nome do Animal", placeholder="Ex: Thor, Mel...")
-            especie = st.selectbox("Espécie", ["Cão", "Gato", "Outro"])
+            
+            # SELEÇÃO DE ESPÉCIES AMPLIADA
+            opcoes_especies = [
+                "Cão", "Gato", "Ave (Calopsita, Papagaio, etc.)", 
+                "Roedor (Hamster, Coelho, etc.)", "Réptil (Tartaruga, Lagarto)", 
+                "Equino (Cavalo)", "Suíno (Mini Porco)", "Peixe", "Outro"
+            ]
+            escolha_especie = st.selectbox("Espécie", opcoes_especies)
+            
+            # Campo condicional para espécie personalizada
+            if escolha_especie == "Outro":
+                especie_final = st.text_input("Especifique a espécie:", placeholder="Ex: Furão...")
+            else:
+                especie_final = escolha_especie
         
         with col2:
-            raca = st.text_input("Raça", placeholder="Ex: SRD, Poodle...")
-            idade = st.number_input("Idade Aproximada (anos)", min_value=0, max_value=30, step=1)
+            raca = st.text_input("Raça", placeholder="Ex: SRD, Poodle, Siames...")
+            idade = st.number_input("Idade Aproximada (anos)", min_value=0, max_value=50, step=1)
 
         st.write("---")
         st.write("### 🏥 2. Saúde e Vacinação")
         
-        opcoes_vacinas = [
-            "V8 / V10 (Cães)", "Antirrábica", "Gripe Canina", 
-            "Giárdia", "V3 / V4 / V5 (Gatos)", "Vermifugado", 
-            "Castrado", "Microchipado"
-        ]
+        # LÓGICA DE SAÚDE DINÂMICA POR ESPÉCIE
+        if escolha_especie == "Cão":
+            opcoes_vacinas = ["V8 / V10", "Antirrábica", "Gripe Canina", "Giárdia", "Vermifugado", "Castrado", "Microchipado"]
+        elif escolha_especie == "Gato":
+            opcoes_vacinas = ["V3 / V4 / V5", "Antirrábica", "Vermifugado", "Castrado", "Microchipado"]
+        else:
+            opcoes_vacinas = ["Vacinação em dia", "Vermifugado", "Castrado", "Microchipado", "Avaliado por Veterinário"]
         
         selecao_vacinas = st.multiselect("Marque os procedimentos realizados:", opcoes_vacinas)
-        outras_infos_saude = st.text_input("Outras observações médicas", placeholder="Ex: Alergias, deficiências ou medicamentos")
+        outras_infos_saude = st.text_input("Outras observações médicas", placeholder="Ex: Alergias ou medicamentos")
 
         st.write("---")
         st.write("### 📞 3. Contato e Perfil do Responsável")
         
-        # Campo Seletivo de Perfil
         perfil_responsavel = st.selectbox(
             "Você está cadastrando como:",
             [
-                "Protetor / Tutor Individual",
-                "ONG (Organização Não Governamental)",
+                "Protetor / Tutor Individual", 
+                "ONG (Organização Não Governamental)", 
                 "Pet Parceira em Feiras e Eventos"
             ]
         )
@@ -90,7 +111,7 @@ if sheet:
                 tipo_msg = "da sua ONG" if "ONG" in perfil_responsavel else "da feira/evento" if "Feiras" in perfil_responsavel else "seu pet"
                 
                 mensagem_tutor = (
-                    f"Olá! Tenho interesse em saber mais sobre o pet *{nome_pet}* {tipo_msg} "
+                    f"Olá! Tenho interesse em saber mais sobre o pet *{nome_pet}* ({especie_final}) {tipo_msg} "
                     f"cadastrado no Guardião Pet SP.\n\n"
                     f"Saúde: {saude_final}\n"
                     f"Link do Projeto: {url_projeto}"
@@ -99,8 +120,8 @@ if sheet:
                 mensagem_url = urllib.parse.quote(mensagem_tutor)
                 link_whatsapp = f"https://wa.me/55{tel_limpo}?text={mensagem_url}"
                 
-                # 4. Dados para a Planilha (Ordem: Nome, Espécie, Idade, Raça, Saúde, Tel, Perfil, Link)
-                nova_linha = [nome_pet, especie, idade, raca, saude_final, telefone, perfil_responsavel, link_whatsapp]
+                # 4. Dados para a Planilha
+                nova_linha = [nome_pet, especie_final, idade, raca, saude_final, telefone, perfil_responsavel, link_whatsapp]
                 
                 try:
                     sheet.append_row(nova_linha)
