@@ -90,14 +90,18 @@ if sheet:
                 mensagem_url = urllib.parse.quote(mensagem_tutor)
                 link_whatsapp = f"https://wa.me/55{tel_limpo}?text={mensagem_url}"
                 
-                # Dados para a Planilha
-                nova_linha = [nome_pet, especie, raca, idade, saude_final, telefone, link_whatsapp]
+                # Dados para a Planilha (Idade na Coluna C conforme sua correção anterior)
+                nova_linha = [nome_pet, especie, idade, raca, saude_final, telefone, link_whatsapp]
                 
                 try:
                     sheet.append_row(nova_linha)
                     st.success(f"🎉 Sucesso! {nome_pet} foi registrado na base de dados.")
-                    st.info("💡 Teste o botão de contato que o adotante usará:")
-                    st.link_button(f"Abrir conversa via WhatsApp", link_whatsapp)
+                    
+                    # --- ALTERAÇÃO SOLICITADA AQUI ---
+                    st.info("💡 Clique aqui para conversar direto com o tutor, pet parceiro em feiras, tutor individual ou ONGs:")
+                    st.link_button(f"Falar com responsável por {nome_pet}", link_whatsapp)
+                    # ---------------------------------
+                    
                 except Exception as e:
                     st.error(f"Erro ao salvar: {e}")
             else:
