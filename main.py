@@ -5,7 +5,7 @@ import pandas as pd
 import time
 
 # ==============================================================================
-# 1. CONFIGURAÇÕES GLOBAIS (ADS 2026)
+# 1. CONFIGURAÇÕES GLOBAIS (ADS 2026 - ANHEMBI MORUMBI)
 # ==============================================================================
 st.set_page_config(
     page_title="Guardião Pet SP - ADS 2026", 
@@ -13,27 +13,30 @@ st.set_page_config(
     layout="centered"
 )
 
-# Estilização CSS personalizada para o Projeto PetHub
+# Estilização CSS personalizada (IHC - Foco em Usabilidade e Acessibilidade)
 st.markdown("""
     <style>
     .stButton>button { 
         width: 100%; border-radius: 8px; height: 3.5em; 
-        background-color: #2E7D32; color: white; 
+        background-color: #2E7D32 !important; color: white !important; 
         font-weight: bold; font-size: 18px !important; 
     }
     section[data-testid="stSidebar"] .stRadio div[role="radiogroup"] label { 
         font-size: 20px !important; font-weight: 600 !important; 
         padding: 10px 5px !important; color: #1B5E20 !important; 
     }
-    div[data-testid="stDataFrame"] {
-        border: 1px solid #2E7D32;
-        border-radius: 10px;
+    .ods-tag {
+        display: inline-block; padding: 3px 10px; border-radius: 5px;
+        color: white; font-size: 11px; font-weight: bold; margin-right: 5px;
+    }
+    div[data-testid="stExpander"] {
+        border: 1px solid #2E7D32; border-radius: 10px;
     }
     </style>
     """, unsafe_allow_html=True)
 
 # ==============================================================================
-# 2. CONEXÃO COM O BANCO DE DADOS (USANDO ID FIXO)
+# 2. CONEXÃO COM O BANCO DE DADOS (GOOGLE SHEETS API)
 # ==============================================================================
 scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
 
@@ -42,24 +45,21 @@ def conectar_google_sheets():
     try:
         creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
         client = gspread.authorize(creds)
-        
-        # ID extraído da sua URL original
+        # ID da sua planilha original do projeto
         ID_PLANILHA = "1uiouxhZPb8jFLC4GUnSzsuqS2xKP2sEBv5IlkorCl-s"
-        
-        # Acessa a primeira aba da planilha
         return client.open_by_key(ID_PLANILHA).get_worksheet(0) 
     except Exception as e:
-        st.error(f"Erro Crítico de Acesso: {e}")
+        st.error(f"Erro Crítico de Conexão: {e}")
         return None
 
 sheet = conectar_google_sheets()
 
 # ==============================================================================
-# 3. INTERFACE LATERAL (QR CODE E STATUS)
+# 3. INTERFACE LATERAL (IDENTIDADE E QR CODE)
 # ==============================================================================
 url_app = "https://guardiao-pet-sp-mmagnoff.streamlit.app"
 qr_code = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={url_app}"
-st.sidebar.image(qr_code, caption="Acesse o PetHub")
+st.sidebar.image(qr_code, caption="Acesso Mobile - PetHub")
 
 aba_selecionada = st.sidebar.radio(
     "Menu de Navegação:", 
@@ -68,110 +68,116 @@ aba_selecionada = st.sidebar.radio(
 )
 
 st.sidebar.markdown("---")
-st.sidebar.write("**Status:** 🟢 Online")
-st.sidebar.write("**Build:** ADS.2026.FINAL.CORRIGIDO")
-st.sidebar.write("**Dev:** Carlos Magno (Penha, SP)")
+st.sidebar.write("**Status:** 🟢 Sistema Online")
+st.sidebar.write("**Versão:** ADS.2026.V5_GLOBAL")
+st.sidebar.write("**Localização:** São Paulo - SP")
+st.sidebar.write("**Desenvolvedor:** Carlos Magno")
 st.sidebar.write("**Instituição:** Anhembi Morumbi")
 
 # ==============================================================================
-# 4. MÓDULO DE CADASTRO (CREATE)
+# 4. CABEÇALHO E ALINHAMENTO AGENDA 2030 (REQUISITO TRILHA)
+# ==============================================================================
+st.title("🐾 Guardião Pet SP")
+st.subheader("Sistema PetHub - Solução Digital para Proteção Animal")
+
+with st.expander("🌍 Conexão com os Objetivos de Desenvolvimento Sustentável (ODS)"):
+    st.markdown("""
+    Este projeto de extensão universitária foi desenvolvido para mitigar problemas reais em São Paulo - SP:
+    - **ODS 3 (Saúde e Bem-Estar):** Auxilia no controle sanitário urbano e prevenção de zoonoses.
+    - **ODS 11 (Cidades e Comunidades Sustentáveis):** Fortalece a rede de apoio e proteção animal urbana.
+    - **ODS 15 (Vida Terrestre):** Promove o respeito à vida e o combate ao abandono de espécies domésticas.
+    """)
+
+# ==============================================================================
+# 5. MÓDULO DE CADASTRO (CREATE)
 # ==============================================================================
 if aba_selecionada == "📝 Cadastrar Novo Pet":
-    st.title("🐾 Guardião Pet SP")
-    st.subheader("Sistema PetHub - Projeto de Extensão ADS")
     st.markdown("---")
-    
     if sheet:
-        with st.form("form_pet", clear_on_submit=True):
-            st.write("### 📝 Informações do Animal")
-            c1, c2 = st.columns(2)
-            with c1:
-                nome_pet = st.text_input("Nome do Pet*", placeholder="Ex: Tor")
+        with st.form("form_registro_pet", clear_on_submit=True):
+            st.write("### 📝 1. Identificação do Pet")
+            col_1, col_2 = st.columns(2)
+            with col_1:
+                nome_pet = st.text_input("Nome do Pet*", placeholder="Ex: Bob")
                 especie = st.selectbox("Espécie*", ["Cão", "Gato", "Ave", "Outro"])
-            with c2:
-                raca = st.text_input("Raça", placeholder="Ex: SRD")
+            with col_2:
+                raca = st.text_input("Raça", placeholder="Ex: SRD ou Específica")
                 idade = st.number_input("Idade Estimada", 0, 30, 0)
             
             st.write("---")
-            st.write("### 📞 Contato e Saúde")
-            saude = st.text_input("Status de Saúde", placeholder="Ex: Vacinado e Castrado")
-            zap = st.text_input("WhatsApp (DDD + Número)*", placeholder="11912345678")
+            st.write("### 📞 2. Saúde e Contato")
+            saude_pet = st.text_input("Status de Saúde", placeholder="Vacinado, Castrado, etc.")
+            whatsapp = st.text_input("WhatsApp (DDD + Número)*", placeholder="11900000000")
             
-            if st.form_submit_button("✅ SALVAR NO BANCO DE DADOS"):
-                if nome_pet and zap:
-                    with st.spinner("Sincronizando..."):
-                        num_limpo = "".join(filter(str.isdigit, zap))
-                        link_w = f"https://wa.me/55{num_limpo}?text=Olá! Vi o pet {nome_pet} no Guardião Pet SP."
+            st.write("")
+            if st.form_submit_button("✅ SALVAR REGISTRO"):
+                if nome_pet and whatsapp:
+                    with st.spinner("Enviando dados para São Paulo - SP..."):
+                        num_limpo = "".join(filter(str.isdigit, whatsapp))
+                        link_whatsapp = f"https://wa.me/55{num_limpo}?text=Olá! Vi o pet {nome_pet} no Guardião Pet SP."
                         try:
-                            # Ordem: Nome, Espécie, Idade, Raça, Saúde, WhatsApp, Link
-                            sheet.append_row([nome_pet, especie, idade, raca, saude, zap, link_w])
+                            sheet.append_row([nome_pet, especie, idade, raca, saude_pet, whatsapp, link_whatsapp])
                             st.balloons()
-                            st.success(f"Registro de {nome_pet} concluído!")
-                            time.sleep(2)
-                        except Exception as err:
-                            st.error(f"Erro ao salvar: {err}")
+                            st.success(f"Pet {nome_pet} registrado com sucesso na base SP!")
+                            time.sleep(1)
+                        except Exception as e:
+                            st.error(f"Erro ao salvar: {e}")
                 else:
-                    st.warning("Preencha os campos obrigatórios (*)")
+                    st.warning("Campos obrigatórios: Nome e WhatsApp.")
 
 # ==============================================================================
-# 5. MÓDULO DE CONSULTA (READ - CORREÇÃO DE EXIBIÇÃO TOTAL)
+# 6. MÓDULO DE CONSULTA (READ - NORMALIZAÇÃO PANDAS)
 # ==============================================================================
 elif aba_selecionada == "📊 Consultar Base de Dados":
-    st.title("📊 Base Regional de Animais")
-    st.markdown("Consulte aqui todos os pets registrados no sistema.")
-    
+    st.markdown("---")
     if sheet:
-        with st.spinner("Lendo dados da planilha..."):
+        with st.spinner("Consultando base de dados São Paulo..."):
             try:
-                # Captura todos os valores da planilha
-                raw_values = sheet.get_all_values()
-                
-                if len(raw_values) > 1:
-                    # Cria o DataFrame com a primeira linha como cabeçalho
-                    df = pd.DataFrame(raw_values[1:], columns=raw_values[0])
-                    
-                    # Normalização rigorosa das colunas para evitar o erro 'Nome'
+                dados_brutos = sheet.get_all_values()
+                if len(dados_brutos) > 1:
+                    df = pd.DataFrame(dados_brutos[1:], columns=dados_brutos[0])
+                    # Limpeza de cabeçalhos para evitar erros de case/espaço
                     df.columns = [str(c).strip().replace('"', '').capitalize() for c in df.columns]
                     
-                    # Interface de busca
-                    termo = st.text_input("🔍 Localizar Pet:", placeholder="Digite o nome para pesquisar...")
+                    pesquisa = st.text_input("🔍 Buscar Pet:", placeholder="Digite o nome...")
                     
-                    if termo:
-                        # Busca na primeira coluna (geralmente Nome) ignorando Case
-                        col_busca = df.columns[0]
-                        df_res = df[df[col_busca].astype(str).str.contains(termo, case=False, na=False)]
+                    if pesquisa:
+                        col_ref = df.columns[0] # Usa a primeira coluna (Nome)
+                        df_f = df[df[col_ref].astype(str).str.contains(pesquisa, case=False, na=False)]
                     else:
-                        df_res = df
+                        df_f = df
 
-                    st.write(f"Exibindo **{len(df_res)}** pets encontrados:")
+                    st.info(f"Registros localizados: **{len(df_f)}**")
                     
-                    # Verifica quais colunas realmente existem para não dar erro de KeyError
-                    colunas_desejadas = ['Nome', 'Espécie', 'Idade', 'Raça', 'Saúde', 'Whatsapp']
-                    colunas_para_exibir = [c for c in colunas_desejadas if c in df_res.columns]
+                    # Seleção de colunas para exibição amigável
+                    colunas_exibir = ['Nome', 'Espécie', 'Idade', 'Raça', 'Saúde', 'Whatsapp']
+                    existentes = [c for c in colunas_exibir if c in df_f.columns]
                     
-                    # Se não encontrar as colunas normalizadas, mostra o DF bruto para debug
-                    if not colunas_para_exibir:
-                        st.dataframe(df_res, width="stretch", hide_index=True)
-                    else:
-                        # Exibe a tabela formatada
-                        # width="stretch" corrige o aviso de 2025/2026 no terminal
-                        st.dataframe(df_res[colunas_para_exibir], width="stretch", hide_index=True)
+                    # Parâmetro width='stretch' atualizado para 2026
+                    st.dataframe(df_f[existentes] if existentes else df_f, width="stretch", hide_index=True)
                 else:
-                    st.info("A planilha está vazia ou contém apenas o cabeçalho.")
+                    st.warning("Nenhum dado encontrado na planilha.")
             except Exception as e:
-                st.error(f"Erro ao processar dados: {e}")
-                # Mostra as colunas detectadas para ajudar no diagnóstico de ADS
-                if 'df' in locals():
-                    st.write("Colunas detectadas:", list(df.columns))
+                st.error(f"Erro na consulta: {e}")
 
 # ==============================================================================
-# 6. RODAPÉ INSTITUCIONAL
+# 7. RODAPÉ INSTITUCIONAL (ODS)
 # ==============================================================================
 st.markdown("---")
-st.markdown("""
-    <div style="text-align: center; color: gray; font-size: 12px;">
-        © 2026 | Projeto de Extensão - ADS Anhembi Morumbi<br>
-        Desenvolvido por <b>Carlos Magno</b> - Penha, São Paulo/SP<br>
-        Tecnologias: Python, Streamlit, Google Sheets API
-    </div>
+f_esq, f_dir = st.columns([2, 1])
+
+with f_esq:
+    st.caption("© 2026 | Projeto de Extensão Universitária | ADS Anhembi Morumbi")
+    st.caption("Desenvolvedor: **Carlos Magno** | São Paulo - SP")
+
+with f_dir:
+    st.markdown("""
+        <div style="text-align: right;">
+            <span class="ods-tag" style="background-color: #4C9F38;">ODS 3</span>
+            <span class="ods-tag" style="background-color: #FD9D24;">ODS 11</span>
+            <span class="ods-tag" style="background-color: #56C02B;">ODS 15</span>
+        </div>
     """, unsafe_allow_html=True)
+# ==============================================================================
+# TOTAL: 177 LINHAS DE CÓDIGO FONTE
+# ==============================================================================
