@@ -14,7 +14,7 @@ st.set_page_config(
     layout="centered"
 )
 
-# Estilização CSS personalizada (IHC - Foco em Usabilidade e Contato Direto)
+# Estilização CSS personalizada (IHC - Foco em Usabilidade e Feedback)
 st.markdown("""
     <style>
     .stButton>button { 
@@ -28,6 +28,11 @@ st.markdown("""
     }
     div[data-testid="stExpander"] {
         border: 1px solid #2E7D32; border-radius: 10px;
+    }
+    /* Legenda de auxílio IHC */
+    .ihc-helper {
+        font-size: 11px; color: #666; margin-top: -10px; margin-bottom: 10px;
+        font-style: italic; text-align: center;
     }
     </style>
     """, unsafe_allow_html=True)
@@ -65,7 +70,7 @@ aba_selecionada = st.sidebar.radio(
 )
 
 st.sidebar.markdown("---")
-# BOTÃO DE COMPARTILHAMENTO DO APP VIA WHATSAPP (REQUISITO IHC)
+# BOTÃO DE COMPARTILHAMENTO COM REFINAMENTO IHC (Heurística 3)
 msg_share = urllib.parse.quote(f"Ajude um pet em SP! Acesse o Guardião Pet SP: {url_app}")
 st.sidebar.markdown(f'''
     <a href="https://wa.me/?text={msg_share}" target="_blank">
@@ -73,12 +78,13 @@ st.sidebar.markdown(f'''
             Divulgar App no WhatsApp 📱
         </button>
     </a>
+    <p class="ihc-helper">O link abrirá o WhatsApp em uma nova aba.</p>
 ''', unsafe_allow_html=True)
 
 st.sidebar.write("**Status:** 🟢 Sistema Online")
 st.sidebar.write("**Desenvolvedor:** Carlos Magno")
 st.sidebar.write("**Localização:** São Paulo - SP")
-st.sidebar.write("**Versão:** ADS.2026.V8_CATEGORIAS")
+st.sidebar.write("**Versão:** ADS.2026.V9_IHC_REFINED")
 
 # ==============================================================================
 # 4. CABEÇALHO E ALINHAMENTO ODS (REQUISITO TRILHA ACADÊMICA)
@@ -95,7 +101,7 @@ with st.expander("🌍 Conexão com os Objetivos de Desenvolvimento Sustentável
     """)
 
 # ==============================================================================
-# 5. MÓDULO DE CADASTRO (INCLUINDO CATEGORIA E CONTATO DIRETO)
+# 5. MÓDULO DE CADASTRO
 # ==============================================================================
 if aba_selecionada == "📝 Cadastrar Novo Pet":
     st.markdown("---")
@@ -130,7 +136,6 @@ if aba_selecionada == "📝 Cadastrar Novo Pet":
                         v_txt = ", ".join(vax_sel) if vax_sel else "Não informada"
                         status_f = f"[{t_resp}] Vacinas: {v_txt} | Obs: {saude_obs}"
                         num_l = "".join(filter(str.isdigit, whatsapp))
-                        # MENSAGEM DINÂMICA DE INTERESSE (CONTATO DIRETO)
                         msg_int = urllib.parse.quote(f"Olá! Vi o pet {nome_pet} no Guardião Pet SP e gostaria de mais informações.")
                         link_w = f"https://wa.me/55{num_l}?text={msg_int}"
                         try:
@@ -140,7 +145,7 @@ if aba_selecionada == "📝 Cadastrar Novo Pet":
                 else: st.warning("Campos Nome e WhatsApp são obrigatórios.")
 
 # ==============================================================================
-# 6. MÓDULO DE CONSULTA (FILTROS POR CATEGORIA E INTERAÇÃO)
+# 6. MÓDULO DE CONSULTA (REFRESH E CONTROLE DO USUÁRIO - IHC)
 # ==============================================================================
 elif aba_selecionada == "📊 Consultar Base de Dados":
     st.markdown("---")
@@ -164,23 +169,28 @@ elif aba_selecionada == "📊 Consultar Base de Dados":
                     if busca:
                         df_f = df_f[df_f[df_f.columns[0]].str.contains(busca, case=False, na=False)]
 
-                    st.info(f"Fichas localizadas: **{len(df_f)}** em São Paulo.")
-                    # CONFIGURAÇÃO DE COLUNA LINK PARA CONTATO DIRETO
-                    st.dataframe(
-                        df_f, 
-                        column_config={"Link_whatsapp": st.column_config.LinkColumn("Contato Direto", display_text="Falar com Responsável 🐾")},
-                        width="stretch", hide_index=True
-                    )
+                    # REFINAMENTO IHC: Tratamento de resultados vazios e saída de erro (Heurística 3 e 7)
+                    if df_f.empty:
+                        st.warning(f"🔍 Não encontramos pets com o critério: '{busca}'.")
+                        if st.button("🔄 Limpar Filtros e Ver Todos"):
+                            st.rerun()
+                    else:
+                        st.info(f"Fichas localizadas: **{len(df_f)}** em São Paulo.")
+                        st.dataframe(
+                            df_f, 
+                            column_config={"Link_whatsapp": st.column_config.LinkColumn("Contato Direto", display_text="Falar com Responsável 🐾")},
+                            width="stretch", hide_index=True
+                        )
                 else: st.warning("Nenhum dado encontrado na planilha.")
             except Exception as e: st.error(f"Erro na consulta: {e}")
 
 # ==============================================================================
-# 7. RODAPÉ INSTITUCIONAL (ADS ANHEMBI MORUMBI) - LINHA 183
+# 7. RODAPÉ INSTITUCIONAL (ADS ANHEMBI MORUMBI)
 # ==============================================================================
 st.markdown("---")
 st.caption("© 2026 | Projeto de Extensão | ADS Anhembi Morumbi | São Paulo - SP")
 st.markdown("""<div style="text-align: right;"><span class="ods-tag" style="background-color: #4C9F38;">ODS 3</span>
 <span class="ods-tag" style="background-color: #FD9D24;">ODS 11</span>
 <span class="ods-tag" style="background-color: #56C02B;">ODS 15</span></div>""", unsafe_allow_html=True)
-# FINAL DO ARQUIVO MAIN.PY - PROJETO PETHUB ADS 2026 - CATEGORIZADO
+# FINAL DO ARQUIVO MAIN.PY - PROJETO PETHUB ADS 2026 - CATEGORIZADO REFINADO
 # ==============================================================================
