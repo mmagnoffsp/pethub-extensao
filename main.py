@@ -1,198 +1,177 @@
 import streamlit as st
 import gspread
 from google.oauth2.service_account import Credentials
-import urllib.parse
+import pandas as pd
 import time
 
-# 1. Configurações Iniciais da Página (Heurística #8: Estética e Minimalismo)
+# ==============================================================================
+# 1. CONFIGURAÇÕES GLOBAIS (ADS 2026)
+# ==============================================================================
 st.set_page_config(
-    page_title="Guardião Pet SP", 
+    page_title="Guardião Pet SP - ADS 2026", 
     page_icon="🐾", 
     layout="centered"
 )
 
-# Estilização CSS para melhorar a experiência do usuário
+# Estilização CSS personalizada para o Projeto PetHub
 st.markdown("""
     <style>
-    .stButton>button {
-        width: 100%;
-        border-radius: 8px;
-        height: 3.5em;
-        background-color: #2E7D32;
-        color: white;
-        font-weight: bold;
+    .stButton>button { 
+        width: 100%; border-radius: 8px; height: 3.5em; 
+        background-color: #2E7D32; color: white; 
+        font-weight: bold; font-size: 18px !important; 
     }
-    .stTextInput>div>div>input {
-        border-radius: 5px;
+    section[data-testid="stSidebar"] .stRadio div[role="radiogroup"] label { 
+        font-size: 20px !important; font-weight: 600 !important; 
+        padding: 10px 5px !important; color: #1B5E20 !important; 
+    }
+    div[data-testid="stDataFrame"] {
+        border: 1px solid #2E7D32;
+        border-radius: 10px;
     }
     </style>
     """, unsafe_allow_html=True)
 
-# 2. Configuração de Acesso ao Google Sheets (Heurística #1: Status do Sistema)
+# ==============================================================================
+# 2. CONEXÃO COM O BANCO DE DADOS (USANDO ID FIXO)
+# ==============================================================================
 scope = ["https://www.googleapis.com/auth/spreadsheets", "https://www.googleapis.com/auth/drive"]
 
 @st.cache_resource
 def conectar_google_sheets():
     try:
-        # Busca as credenciais configuradas no Streamlit Secrets
-        creds = Credentials.from_service_account_info(
-            st.secrets["gcp_service_account"], 
-            scopes=scope
-        )
+        creds = Credentials.from_service_account_info(st.secrets["gcp_service_account"], scopes=scope)
         client = gspread.authorize(creds)
         
-        # URL da planilha oficial do projeto PetHub
-        URL_PLANILHA = "https://docs.google.com/spreadsheets/d/1uiouxhZPb8jFLC4GUnSzsuqS2xKP2sEBv5IlkorCl-s/edit"
-        planilha = client.open_by_url(URL_PLANILHA)
-        return planilha.sheet1
+        # ID extraído da sua URL original
+        ID_PLANILHA = "1uiouxhZPb8jFLC4GUnSzsuqS2xKP2sEBv5IlkorCl-s"
+        
+        # Acessa a primeira aba da planilha
+        return client.open_by_key(ID_PLANILHA).get_worksheet(0) 
     except Exception as e:
-        st.error(f"Erro de conexão com o Banco de Dados: {e}")
+        st.error(f"Erro Crítico de Acesso: {e}")
         return None
-
-# 3. Interface do Usuário - Cabeçalho Institucional
-st.title("🐾 Guardião Pet SP")
-st.subheader("Sistema de Cadastro de Pets - Projeto PetHub")
-st.markdown("---")
-
-# Heurística #10: Ajuda e Documentação (Breve instrução inicial)
-st.info("Bem-vindo! Este sistema integra protetores e ONGs à rede de adoção de São Paulo. Preencha os campos abaixo para registrar um animal.")
 
 sheet = conectar_google_sheets()
 
-if sheet:
-    # Heurística #5: Prevenção de Erros (Uso do formulário para evitar envios acidentais)
-    with st.form("form_pet", clear_on_submit=True):
-        st.write("### 📝 1. Informações Básicas do Pet")
-        col1, col2 = st.columns(2)
-        
-        with col1:
-            nome_pet = st.text_input("Nome do Animal*", placeholder="Ex: Thor, Mel...", help="Campo obrigatório")
-            
-            # Heurística #6: Reconhecimento em vez de Memorização (Lista ampla de espécies)
-            opcoes_especies = [
-                "Cão", "Gato", "Ave (Calopsita, Papagaio, etc.)", 
-                "Roedor (Hamster, Coelho, etc.)", "Réptil (Tartaruga, Lagarto)", 
-                "Equino (Cavalo)", "Suíno (Mini Porco)", "Peixe", "Outro"
-            ]
-            escolha_especie = st.selectbox("Espécie*", opcoes_especies)
-            
-            # Campo condicional para espécie (Flexibilidade e Eficiência - Heurística #7)
-            if escolha_especie == "Outro":
-                especie_final = st.text_input("Especifique a espécie:", placeholder="Ex: Furão, Cabra...")
-            else:
-                especie_final = escolha_especie
-        
-        with col2:
-            raca = st.text_input("Raça", placeholder="Ex: SRD, Poodle, Siames...", help="Se desconhecida, use SRD")
-            idade = st.number_input("Idade Aproximada (anos)", min_value=0, max_value=50, step=1)
+# ==============================================================================
+# 3. INTERFACE LATERAL (QR CODE E STATUS)
+# ==============================================================================
+url_app = "https://guardiao-pet-sp-mmagnoff.streamlit.app"
+qr_code = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={url_app}"
+st.sidebar.image(qr_code, caption="Acesse o PetHub")
 
-        st.write("---")
-        st.write("### 🏥 2. Saúde, Vacinação e Bem-estar")
-        
-        # Lógica de Vacinas Adaptável (Heurística #2: Correspondência com o Mundo Real)
-        if escolha_especie == "Cão":
-            opcoes_vacinas = ["V8 / V10", "Antirrábica", "Gripe Canina", "Giárdia", "Vermifugado", "Castrado", "Microchipado"]
-        elif escolha_especie == "Gato":
-            opcoes_vacinas = ["V3 / V4 / V5", "Antirrábica", "Vermifugado", "Castrado", "Microchipado"]
-        else:
-            opcoes_vacinas = ["Vacinação em dia", "Vermifugado", "Castrado", "Microchipado", "Avaliado por Veterinário"]
-        
-        selecao_vacinas = st.multiselect("Marque os procedimentos realizados:", opcoes_vacinas)
-        outras_infos_saude = st.text_area("Outras observações médicas", placeholder="Ex: Alergias, deficiências ou medicamentos em uso...", height=100)
+aba_selecionada = st.sidebar.radio(
+    "Menu de Navegação:", 
+    ["📝 Cadastrar Novo Pet", "📊 Consultar Base de Dados"],
+    index=0
+)
 
-        st.write("---")
-        st.write("### 📞 3. Contato e Perfil do Responsável")
-        
-        perfil_responsavel = st.selectbox(
-            "Você está cadastrando como:",
-            [
-                "Protetor / Tutor Individual", 
-                "ONG (Organização Não Governamental)", 
-                "Pet Parceira em Feiras e Eventos"
-            ]
-        )
-        
-        telefone = st.text_input("Seu WhatsApp (DDD + Número)*", placeholder="Ex: 11988887777", help="Apenas números com DDD")
-        
-        st.write("")
-        # Heurística #4: Consistência e Padrões
-        enviado = st.form_submit_button("✅ FINALIZAR E SALVAR CADASTRO")
-        
-        if enviado:
-            if nome_pet and telefone:
-                # Heurística #1: Fornecer feedback de processamento
-                with st.spinner("Processando cadastro e salvando na nuvem..."):
-                    # Processamento de dados de saúde
-                    lista_saude = selecao_vacinas.copy()
-                    if outras_infos_saude:
-                        lista_saude.append(f"Obs: {outras_infos_saude}")
-                    
-                    saude_final = ", ".join(lista_saude) if lista_saude else "Nenhuma informação fornecida"
+st.sidebar.markdown("---")
+st.sidebar.write("**Status:** 🟢 Online")
+st.sidebar.write("**Build:** ADS.2026.FINAL.CORRIGIDO")
+st.sidebar.write("**Dev:** Carlos Magno (Penha, SP)")
+st.sidebar.write("**Instituição:** Anhembi Morumbi")
 
-                    # Automação de Link de WhatsApp
-                    tel_limpo = "".join(filter(str.isdigit, telefone))
-                    url_projeto = "https://guardiao-pet-sp-mmagnoff.streamlit.app"
-                    
-                    tipo_msg = "da sua ONG" if "ONG" in perfil_responsavel else "da feira/evento" if "Feiras" in perfil_responsavel else "seu pet"
-                    
-                    mensagem_tutor = (
-                        f"Olá! Tenho interesse em saber mais sobre o pet *{nome_pet}* ({especie_final}) {tipo_msg} "
-                        f"cadastrado no Guardião Pet SP.\n\n"
-                        f"Saúde: {saude_final}\n"
-                        f"Link do Projeto: {url_projeto}"
-                    )
-                    
-                    mensagem_url = urllib.parse.quote(mensagem_tutor)
-                    link_whatsapp = f"https://wa.me/55{tel_limpo}?text={mensagem_url}"
-                    
-                    # 4. Dados para a Planilha (Heurística #1: Status)
-                    nova_linha = [nome_pet, especie_final, idade, raca, saude_final, telefone, perfil_responsavel, link_whatsapp]
-                    
-                    try:
-                        sheet.append_row(nova_linha)
-                        st.balloons() # Feedback visual de sucesso
-                        st.success(f"🎉 Sucesso! {nome_pet} foi registrado na base de dados com segurança.")
-                        
-                        st.info(f"💡 Link de contato direto gerado para o perfil: {perfil_responsavel}")
-                        st.link_button(f"Abrir WhatsApp de {nome_pet}", link_whatsapp)
-                        
-                    except Exception as e:
-                        # Heurística #9: Ajudar usuários a reconhecer erros
-                        st.error(f"Erro ao salvar na planilha: {e}")
-            else:
-                # Heurística #9: Mensagem de erro clara
-                st.warning("⚠️ Atenção: Os campos 'Nome do Pet' e 'WhatsApp' são fundamentais para o cadastro.")
-
-    # --- RODAPÉ INSTITUCIONAL, ACADÊMICO E ODS ---
-    st.write("")
+# ==============================================================================
+# 4. MÓDULO DE CADASTRO (CREATE)
+# ==============================================================================
+if aba_selecionada == "📝 Cadastrar Novo Pet":
+    st.title("🐾 Guardião Pet SP")
+    st.subheader("Sistema PetHub - Projeto de Extensão ADS")
     st.markdown("---")
-    st.markdown("### 🏛️ Detalhes do Projeto de Extensão")
     
-    col_u1, col_u2 = st.columns(2)
-    with col_u1:
-        st.markdown(f"""
-        **Instituição:** Universidade Anhembi Morumbi  
-        **Curso:** Tecnologia em ADS | 2º Semestre / 2026  
-        **Desenvolvedor:** Carlos Magno
-        """)
-    with col_u2:
-        st.markdown("""
-        **Impacto Social e ODS (ONU):** ✅ **ODS 11:** Cidades e Comunidades Sustentáveis  
-        ✅ **ODS 15:** Vida Terrestre (Proteção e Bem-Estar Animal)
-        """)
+    if sheet:
+        with st.form("form_pet", clear_on_submit=True):
+            st.write("### 📝 Informações do Animal")
+            c1, c2 = st.columns(2)
+            with c1:
+                nome_pet = st.text_input("Nome do Pet*", placeholder="Ex: Tor")
+                especie = st.selectbox("Espécie*", ["Cão", "Gato", "Ave", "Outro"])
+            with c2:
+                raca = st.text_input("Raça", placeholder="Ex: SRD")
+                idade = st.number_input("Idade Estimada", 0, 30, 0)
+            
+            st.write("---")
+            st.write("### 📞 Contato e Saúde")
+            saude = st.text_input("Status de Saúde", placeholder="Ex: Vacinado e Castrado")
+            zap = st.text_input("WhatsApp (DDD + Número)*", placeholder="11912345678")
+            
+            if st.form_submit_button("✅ SALVAR NO BANCO DE DADOS"):
+                if nome_pet and zap:
+                    with st.spinner("Sincronizando..."):
+                        num_limpo = "".join(filter(str.isdigit, zap))
+                        link_w = f"https://wa.me/55{num_limpo}?text=Olá! Vi o pet {nome_pet} no Guardião Pet SP."
+                        try:
+                            # Ordem: Nome, Espécie, Idade, Raça, Saúde, WhatsApp, Link
+                            sheet.append_row([nome_pet, especie, idade, raca, saude, zap, link_w])
+                            st.balloons()
+                            st.success(f"Registro de {nome_pet} concluído!")
+                            time.sleep(2)
+                        except Exception as err:
+                            st.error(f"Erro ao salvar: {err}")
+                else:
+                    st.warning("Preencha os campos obrigatórios (*)")
 
-    st.markdown("---")
-    # Gerador de QR Code dinâmico para divulgação (Heurística #7: Atalhos)
-    url_publica = "https://guardiao-pet-sp-mmagnoff.streamlit.app"
-    qr_code_api = f"https://api.qrserver.com/v1/create-qr-code/?size=150x150&data={url_publica}"
+# ==============================================================================
+# 5. MÓDULO DE CONSULTA (READ - CORREÇÃO DE EXIBIÇÃO TOTAL)
+# ==============================================================================
+elif aba_selecionada == "📊 Consultar Base de Dados":
+    st.title("📊 Base Regional de Animais")
+    st.markdown("Consulte aqui todos os pets registrados no sistema.")
     
-    col_qr, col_txt = st.columns([1, 3])
-    with col_qr:
-        st.image(qr_code_api, caption="Divulgue o App")
-    with col_txt:
-        st.write("### 🔗 Divulgação do Território")
-        st.write("Utilize o QR Code acima em feiras de adoção e clínicas parceiras da Penha e região para que mais animais sejam cadastrados.")
+    if sheet:
+        with st.spinner("Lendo dados da planilha..."):
+            try:
+                # Captura todos os valores da planilha
+                raw_values = sheet.get_all_values()
+                
+                if len(raw_values) > 1:
+                    # Cria o DataFrame com a primeira linha como cabeçalho
+                    df = pd.DataFrame(raw_values[1:], columns=raw_values[0])
+                    
+                    # Normalização rigorosa das colunas para evitar o erro 'Nome'
+                    df.columns = [str(c).strip().replace('"', '').capitalize() for c in df.columns]
+                    
+                    # Interface de busca
+                    termo = st.text_input("🔍 Localizar Pet:", placeholder="Digite o nome para pesquisar...")
+                    
+                    if termo:
+                        # Busca na primeira coluna (geralmente Nome) ignorando Case
+                        col_busca = df.columns[0]
+                        df_res = df[df[col_busca].astype(str).str.contains(termo, case=False, na=False)]
+                    else:
+                        df_res = df
 
-else:
-    # Heurística #9: Diagnóstico de erro crítico
-    st.error("⚠️ Sistema Offline: Não foi possível conectar ao Banco de Dados. Verifique as credenciais GCP.")
+                    st.write(f"Exibindo **{len(df_res)}** pets encontrados:")
+                    
+                    # Verifica quais colunas realmente existem para não dar erro de KeyError
+                    colunas_desejadas = ['Nome', 'Espécie', 'Idade', 'Raça', 'Saúde', 'Whatsapp']
+                    colunas_para_exibir = [c for c in colunas_desejadas if c in df_res.columns]
+                    
+                    # Se não encontrar as colunas normalizadas, mostra o DF bruto para debug
+                    if not colunas_para_exibir:
+                        st.dataframe(df_res, width="stretch", hide_index=True)
+                    else:
+                        # Exibe a tabela formatada
+                        # width="stretch" corrige o aviso de 2025/2026 no terminal
+                        st.dataframe(df_res[colunas_para_exibir], width="stretch", hide_index=True)
+                else:
+                    st.info("A planilha está vazia ou contém apenas o cabeçalho.")
+            except Exception as e:
+                st.error(f"Erro ao processar dados: {e}")
+                # Mostra as colunas detectadas para ajudar no diagnóstico de ADS
+                if 'df' in locals():
+                    st.write("Colunas detectadas:", list(df.columns))
+
+# ==============================================================================
+# 6. RODAPÉ INSTITUCIONAL
+# ==============================================================================
+st.markdown("---")
+st.markdown("""
+    <div style="text-align: center; color: gray; font-size: 12px;">
+        © 2026 | Projeto de Extensão - ADS Anhembi Morumbi<br>
+        Desenvolvido por <b>Carlos Magno</b> - Penha, São Paulo/SP<br>
+        Tecnologias: Python, Streamlit, Google Sheets API
+    </div>
+    """, unsafe_allow_html=True)
