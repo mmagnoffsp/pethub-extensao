@@ -15,13 +15,14 @@ except Exception:
 
 supabase: Client = create_client(URL, KEY)
 
-st.set_page_config(page_title="Guardião Pet SP", layout="wide", page_icon="🐾")
+st.set_page_config(page_title="Guardião Pet Brasil", layout="wide", page_icon="🐾")
 
 # --- INTERFACE: ABAS ---
-aba_gestao, aba_vacinas = st.tabs(["🏠 Gestão de Pets", "💉 Cartão de Vacinas"])
+aba_gestao, aba_vacinas = st.tabs(["🏠 Gestão de Pets", "💉 Guia de Saúde Animal"])
 
 with aba_gestao:
-    st.title("🐾 Painel de Controle - Guardião Pet SP")
+    st.title("🐾 Guardião Pet Brasil")
+    st.subheader("Conectando e protegendo animais em todo o território nacional")
     
     with st.expander("➕ Cadastrar Novo Pet", expanded=True):
         with st.form("form_cadastro", clear_on_submit=True):
@@ -29,10 +30,11 @@ with aba_gestao:
             with col1:
                 nome = st.text_input("Nome do Pet")
                 especie = st.selectbox("Espécie", ["Cachorro", "Gato", "Outro"])
-                idade = st.text_input("Idade/Porte")
+                # Mudamos 'idade' para algo mais completo, já que é Brasil todo
+                info_adicional = st.text_input("Porte, Idade ou Localização (Cidade/UF)")
             
             with col2:
-                foto = st.file_uploader("📷 Subir Foto", type=["jpg", "jpeg", "png"])
+                foto = st.file_uploader("📷 Foto do Pet", type=["jpg", "jpeg", "png"])
                 
                 if foto is not None:
                     img = Image.open(foto)
@@ -41,22 +43,23 @@ with aba_gestao:
                     
                     buffer_img = BytesIO()
                     img.save(buffer_img, format="JPEG", quality=60, optimize=True)
-                    st.image(buffer_img, caption="Prévia", width=200)
+                    st.image(buffer_img, caption="Prévia da Foto", width=200)
             
-            btn_cadastrar = st.form_submit_button("✅ Salvar Pet")
+            btn_cadastrar = st.form_submit_button("✅ Cadastrar no Sistema Nacional")
 
         if btn_cadastrar and nome:
             try:
-                supabase.table("pets").insert({"nome": nome, "especie": especie, "idade": idade}).execute()
-                st.success(f"Cadastro de {nome} realizado!")
+                # Salvando no banco de dados nacional
+                supabase.table("pets").insert({"nome": nome, "especie": especie, "idade": info_adicional}).execute()
+                st.success(f"O pet {nome} foi registrado com sucesso na rede nacional!")
                 st.rerun()
             except Exception as e:
-                st.error(f"Erro ao salvar: {e}")
+                st.error(f"Erro ao conectar com o servidor: {e}")
 
     st.markdown("---")
     
-    # --- LISTAGEM COM QR CODE ---
-    st.subheader("📋 Pets Cadastrados")
+    # --- LISTAGEM NACIONAL COM QR CODE ---
+    st.subheader("📋 Mural de Pets Registrados")
     res = supabase.table("pets").select("*").execute()
     
     if res.data:
@@ -66,46 +69,48 @@ with aba_gestao:
                 
                 with c1:
                     st.write(f"### {pet['nome'].upper()}")
-                    st.write(f"**Espécie:** {pet['especie']} | **Idade:** {pet['idade']}")
+                    st.write(f"**Espécie:** {pet['especie']}")
+                    st.write(f"**Detalhes/Local:** {pet['idade']}")
                 
                 with c2:
+                    # O link agora leva para o domínio nacional
                     link_pet = f"https://guardiao-pet-sp-cmmf2026.streamlit.app/?id={pet['id']}"
                     qr = qrcode.make(link_pet)
                     buf_qr = BytesIO()
                     qr.save(buf_qr, format="PNG")
-                    st.image(buf_qr.getvalue(), caption="QR Code", width=110)
-                    st.download_button("💾 Baixar", buf_qr.getvalue(), f"qr_{pet['nome']}.png", "image/png", key=f"dl_{pet['id']}")
+                    st.image(buf_qr.getvalue(), caption="QR Identificador Nacional", width=110)
+                    st.download_button("💾 Baixar QR", buf_qr.getvalue(), f"qr_{pet['nome']}.png", "image/png", key=f"dl_{pet['id']}")
                 
                 with c3:
-                    if st.button(f"🗑️ Deletar", key=f"del_{pet['id']}", type="primary"):
+                    if st.button(f"🗑️ Remover", key=f"del_{pet['id']}", type="primary"):
                         supabase.table("pets").delete().eq("id", pet['id']).execute()
                         st.rerun()
     else:
-        st.info("Nenhum pet cadastrado.")
+        st.info("Aguardando o primeiro registro de pet nesta rede nacional.")
 
 with aba_vacinas:
-    st.title("💉 Guia de Vacinação Essencial")
-    st.write("Informações importantes para a saúde dos pets na Vila Esperança e região.")
+    st.title("💉 Guia de Vacinação Brasil")
+    st.write("Protocolo vacinal recomendado pelas principais associações veterinárias do país.")
 
     col_dog, col_cat = st.columns(2)
 
     with col_dog:
-        st.subheader("🐕 Calendário Canino")
+        st.subheader("🐕 Calendário Canino Nacional")
         with st.container(border=True):
             st.markdown("""
-            - **V8 ou V10 (Polivalente):** Protege contra Cinomose, Parvovirose e Leptospirose. (3 doses iniciais + reforço anual).
-            - **Antirrábica:** Protege contra a Raiva. (Dose única anual).
-            - **Gripe Canina:** Previne tosse e infecções respiratórias. (Anual).
-            - **Giardíase:** Protege contra o protozoário Giardia. (Reforço anual).
+            - **Polivalente (V8/V10):** Essencial em todos os estados contra viroses graves.
+            - **Antirrábica:** Obrigatória em todo o Brasil (Dose anual).
+            - **Leishmaniose:** Crucial em regiões endêmicas do Brasil.
+            - **Gripe e Giardíase:** Recomendadas para pets com convívio social.
             """)
 
     with col_cat:
-        st.subheader("🐈 Calendário Felino")
+        st.subheader("🐈 Calendário Felino Nacional")
         with st.container(border=True):
             st.markdown("""
-            - **V4 ou V5 (Polivalente):** Protege contra Rinotraqueíte, Calicivirose e Panleucopenia (V5 inclui FeLV).
-            - **Antirrábica:** Protege contra a Raiva. (Dose única anual).
-            - **FeLV (Leucemia Felina):** Essencial para gatos com acesso à rua ou convívio com outros gatos.
+            - **Polivalente (V4 ou V5):** Base da saúde felina no país.
+            - **Antirrábica:** Obrigatória nacionalmente.
+            - **FeLV:** Testagem e vacinação recomendada para gatos de todas as regiões.
             """)
     
-    st.info("💡 Lembre-se: O acompanhamento de um médico veterinário é indispensável.")
+    st.info("💡 Este guia segue as diretrizes nacionais. Consulte sempre um veterinário local.")
