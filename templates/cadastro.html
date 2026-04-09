@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastrar Pet - Guardião Pet SP</title>
+    <style>
+        body { 
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+            background-color: #f4f7f6; 
+            margin: 0; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh;
+        }
+        .container { 
+            background: white; 
+            padding: 30px; 
+            border-radius: 12px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+            width: 100%; 
+            max-width: 450px; 
+            border-top: 8px solid #2E7D32;
+        }
+        h1 { color: #2E7D32; text-align: center; margin-bottom: 10px; }
+        p { text-align: center; color: #666; font-size: 14px; margin-bottom: 25px; }
+        
+        label { font-weight: bold; color: #333; display: block; margin-bottom: 5px; }
+        
+        input, select { 
+            width: 100%; 
+            padding: 12px; 
+            margin-bottom: 20px; 
+            border-radius: 6px; 
+            border: 1px solid #ddd; 
+            box-sizing: border-box; /* Garante que o padding não quebre a largura */
+        }
+        
+        button { 
+            width: 100%; 
+            background-color: #2E7D32; 
+            color: white; 
+            padding: 15px; 
+            border: none; 
+            border-radius: 6px; 
+            font-weight: bold; 
+            font-size: 16px; 
+            cursor: pointer; 
+            transition: background 0.3s;
+        }
+        
+        button:hover { background-color: #1b5e20; }
+        
+        .back-link { 
+            display: block; 
+            text-align: center; 
+            margin-top: 20px; 
+            text-decoration: none; 
+            color: #2E7D32; 
+            font-weight: 500;
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>📝 Novo Cadastro</h1>
+    <p>Insira os dados do pet para a rede de adoção.</p>
+
+    <form action="/cadastrar" method="post">
+        <label for="nome">Nome do Pet*</label>
+        <input type="text" id="nome" name="nome" placeholder="Ex: Mel, Bob..." required>
+
+        <label for="especie">Espécie*</label>
+        <select id="especie" name="especie">
+            <option value="Cão">Cão</option>
+            <option value="Gato">Gato</option>
+            <option value="Ave">Ave</option>
+            <option value="Outro">Outro</option>
+        </select>
+
+        <label for="idade">Idade Estimada (Anos)*</label>
+        <input type="number" id="idade" name="idade" min="0" max="30" placeholder="Ex: 2" required>
+
+        <button type="submit">✅ PUBLICAR FICHA DE ADOÇÃO</button>
+    </form>
+
+    <a href="/" class="back-link">⬅ Voltar para a lista de pets</a>
+</div>
+
+</body>
+</html>

@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Guardião Pet SP - ADS 2026</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 900px; margin: auto; padding: 20px; background-color: #f4f7f6; }
+        .header { background-color: #2E7D32; color: white; padding: 20px; border-radius: 10px; text-align: center; margin-bottom: 20px; }
+        .ods-section { background: #fff; padding: 15px; border: 1px solid #2E7D32; border-radius: 10px; font-size: 14px; margin-bottom: 20px; }
+        .pet-card { background: white; border-radius: 8px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-left: 5px solid #2E7D32; }
+        .btn { background-color: #2E7D32; color: white; padding: 12px 20px; text-decoration: none; border-radius: 5px; font-weight: bold; }
+        .ods-tag { display: inline-block; padding: 3px 8px; border-radius: 4px; color: white; font-size: 12px; margin-right: 5px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🐾 Guardião Pet SP</h1>
+        <p>Sistema PetHub - Gestão de Adoção e Tutoria</p>
+    </div>
+
+    <div class="ods-section">
+        <h3>🌍 Conexão com as ODS</h3>
+        <p>Este projeto de extensão universitária mitiga problemas reais em São Paulo:</p>
+        <span class="ods-tag" style="background-color: #4C9F38;">ODS 3</span>
+        <span class="ods-tag" style="background-color: #FD9D24;">ODS 11</span>
+        <span class="ods-tag" style="background-color: #56C02B;">ODS 15</span>
+    </div>
+
+    <div style="margin-bottom: 30px;">
+        <a href="/cadastrar" class="btn">📝 CADASTRAR NOVO PET</a>
+    </div>
+
+    <h2>📊 Pets Disponíveis em São Paulo</h2>
+    {% for pet in pets %}
+    <div class="pet-card">
+        <h3>{{ pet[1] }}</h3> <p><strong>Espécie:</strong> {{ pet[2] }} | <strong>Idade:</strong> {{ pet[3] }} anos</p>
+        <p><em>Localização: Vila Esperança/Penha - SP</em></p>
+    </div>
+    {% endfor %}
+
+    <hr>
+    <p style="text-align: center; font-size: 12px; color: #666;">
+        © 2026 | ADS Anhembi Morumbi | Desenvolvedor: Carlos Magno
+    </p>
+</body>
+</html>
