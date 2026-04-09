@@ -1,44 +1,54 @@
-from fastapi import FastAPI, Request, Form
-from fastapi.responses import RedirectResponse
-from fastapi.templating import Jinja2Templates
-import database
+import qrcode
+from supabase import create_client, Client
 
-# --- CONFIGURAÇÃO INICIAL (NÃO PODE APAGAR!) ---
-app = FastAPI()
-templates = Jinja2Templates(directory="templates")
+# Configurações do Guardião Pet SP
+SUPABASE_URL = "https://bqawbkibffppaswlwsgr.supabase.co"
+SUPABASE_KEY = "sb_publishable_3R_hLe9JN_2kD89rv9dzCQ_-rWznngn"
 
-# Cria a tabela no banco Neon ao iniciar
-database.criar_tabela()
+supabase: Client = create_client(SUPABASE_URL, SUPABASE_KEY)
 
-# --- ROTAS DO SISTEMA ---
+def gerar_qr_code(nome, especie, idade):
+    # Criando o texto que o QR Code vai conter
+    conteudo = f"Guardião Pet SP\nPet: {nome}\nEspécie: {especie}\nIdade: {idade}\nStatus: Disponível para Adoção"
+    
+    # Gerando a imagem
+    img = qrcode.make(conteudo)
+    
+    # Nome do arquivo (ex: qrcode_bob.png)
+    nome_arquivo = f"qrcode_{nome.lower().replace(' ', '_')}.png"
+    img.save(nome_arquivo)
+    print(f"📷 QR Code gerado com sucesso: {nome_arquivo}")
 
-@app.get("/")
-def listar_pets(request: Request):
-    conn = database.get_connection()
-    cur = conn.cursor()
-    cur.execute("SELECT * FROM pets")
-    pets = cur.fetchall()
-    cur.close()
-    conn.close()
-    return templates.TemplateResponse(
-        request=request, 
-        name="index.html", 
-        context={"pets": pets}
-    )
+def cadastrar_pet():
+    print("\n" + "="*30)
+    print(" CADASTRO + QR CODE: SISTEMAPET ")
+    print("="*30)
+    
+    nome = input("Nome do pet: ")
+    especie = input("Espécie: ")
+    idade = input("Idade: ")
+    
+    dados_pet = {"nome": nome, "especie": especie, "idade": idade}
+    
+    try:
+        # 1. Salva no Supabase
+        supabase.table("pets").insert(dados_pet).execute()
+        print(f"\n✅ {nome} salvo na nuvem!")
+        
+        # 2. Gera o QR Code automaticamente
+        gerar_qr_code(nome, especie, idade)
+        
+    except Exception as e:
+        print(f"\n❌ Erro no processo: {e}")
 
-@app.get("/cadastrar")
-def form_cadastro(request: Request):
-    return templates.TemplateResponse(
-        request=request, 
-        name="cadastro.html"
-    )
+def listar_pets():
+    print("\n" + "="*30)
+    print(" LISTA DE ADOÇÃO ATUALIZADA ")
+    print("="*30)
+    resposta = supabase.table("pets").select("*").execute()
+    for pet in resposta.data:
+        print(f"🐾 {pet['nome'].upper()} - {pet['especie']}")
 
-@app.post("/cadastrar")
-def salvar_pet(nome: str = Form(...), especie: str = Form(...), idade: int = Form(...)):
-    conn = database.get_connection()
-    cur = conn.cursor()
-    cur.execute("INSERT INTO pets (nome, especie, idade) VALUES (%s, %s, %s)", (nome, especie, idade))
-    conn.commit()
-    cur.close()
-    conn.close()
-    return RedirectResponse(url="/", status_code=303)
+if __name__ == "__main__":
+    cadastrar_pet()
+    listar_pets()
