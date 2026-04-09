@@ -4,9 +4,16 @@ from io import BytesIO
 from supabase import create_client, Client
 from PIL import Image  # Biblioteca para tratar a foto
 
-# --- CONEXÃO ---
-URL = "https://bqawbkibffppaswlwsgr.supabase.co"
-KEY = "sb_publishable_3R_hLe9JN_2kD89rv9dzCQ_-rWznngn"
+# --- CONEXÃO SEGURA ---
+# O try/except garante que funcione tanto no seu PC quanto na Internet (Nuvem)
+try:
+    URL = st.secrets["SUPABASE_URL"]
+    KEY = st.secrets["SUPABASE_KEY"]
+except Exception:
+    # Caso rode localmente no VS Code, ele usa estas chaves:
+    URL = "https://bqawbkibffppaswlwsgr.supabase.co"
+    KEY = "sb_publishable_3R_hLe9JN_2kD89rv9dzCQ_-rWznngn"
+
 supabase: Client = create_client(URL, KEY)
 
 st.set_page_config(page_title="Guardião Pet SP", layout="wide", page_icon="🐾")
@@ -32,9 +39,9 @@ with aba_gestao:
                 if foto is not None:
                     img = Image.open(foto)
                     img = img.convert("RGB") # Garante compatibilidade
-                    img.thumbnail((500, 500)) # Reduz o tamanho físico (pixels)
+                    img.thumbnail((500, 500)) # Redimensiona para ocupar pouca memória
                     
-                    # Salva na memória com qualidade reduzida (ocupa pouco espaço)
+                    # Salva na memória com qualidade reduzida (otimização para o banco)
                     buffer = BytesIO()
                     img.save(buffer, format="JPEG", quality=60, optimize=True)
                     st.image(buffer, caption="Prévia Otimizada (Leve)", width=200)
@@ -42,9 +49,12 @@ with aba_gestao:
             btn_cadastrar = st.form_submit_button("✅ Salvar Pet e Gerar QR")
 
         if btn_cadastrar and nome:
-            supabase.table("pets").insert({"nome": nome, "especie": especie, "idade": idade}).execute()
-            st.success(f"Cadastro de {nome} realizado!")
-            st.rerun()
+            try:
+                supabase.table("pets").insert({"nome": nome, "especie": especie, "idade": idade}).execute()
+                st.success(f"Cadastro de {nome} realizado com sucesso!")
+                st.rerun()
+            except Exception as e:
+                st.error(f"Erro ao salvar no banco: {e}")
 
     st.markdown("---")
     
@@ -63,5 +73,23 @@ with aba_gestao:
                         st.info(f"QR Code para {pet['nome']} pronto para impressão!")
                 with c3:
                     if st.button(f"🗑️ Deletar", key=f"del_{pet['id']}", type="primary"):
-                        supabase.table("pets").delete().eq("id", pet['id']).execute()
-                        st.rerun()
+                        try:
+                            supabase.table("pets").delete().eq("id", pet['id']).execute()
+                            st.rerun()
+                        except Exception as e:
+                            st.error("Erro ao deletar.")
+    else:
+        st.info("Nenhum pet cadastrado na região da Penha ainda.")
+
+# --- ABA 2: VACINAS (ESTRUTURA INICIAL) ---
+with aba_vacinas:
+    st.title("💉 Controle de Vacinação")
+    st.write("Área destinada ao histórico de vacinas e clínicas parceiras.")
+    if res.data:
+        pet_vacinado = st.selectbox("Selecione o Pet para Vacinar", [p['nome'] for p in res.data])
+        st.date_input("Data da Vacina")
+        st.text_input("Nome da Vacina (ex: V10, Antirrábica)")
+        if st.button("Registrar Vacina"):
+            st.success("Dados de vacina preparados para o banco!")
+    else:
+        st.warning("Cadastre um pet primeiro para gerenciar as vacinas.")
