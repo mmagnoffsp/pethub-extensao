@@ -60,9 +60,12 @@ if "id" in query_params:
                     st.image(pet['foto_url'], use_container_width=True)
             with col_info:
                 st.markdown(f"# 🐾 {pet['nome'].upper()}")
+                st.markdown(f"**Espécie:** {pet.get('especie', 'Não informada')} | **Porte:** {pet.get('porte', 'Não informado')}")
                 st.markdown(f"**Responsável:** {pet.get('idade', 'Resgate Independente')}")
+                
                 status_raw = pet.get('status', '')
                 info = {p.split(":",1)[0]: p.split(":",1)[1] for p in status_raw.split("|") if ":" in p}
+                
                 st.write(f"📍 **Localização:** {info.get('LOCAL', 'São Paulo - SP')}")
                 tel = info.get('TEL', '')
                 if tel:
@@ -85,7 +88,6 @@ with st.sidebar:
         
         if opcao == "Fazer Login":
             if st.button("Entrar"):
-                # Busca direta no banco de dados (Removida a senha 'admin' do código)
                 res_u = supabase.table("usuarios").select("*").eq("login", u_login).eq("senha", hash_senha(u_senha)).execute()
                 if res_u.data:
                     st.session_state.user = res_u.data[0]
@@ -132,6 +134,8 @@ else:
             c1, c2 = st.columns(2)
             with c1:
                 nome_p = st.text_input("Nome do Animal")
+                especie_p = st.selectbox("Espécie", ["Cachorro", "Gato", "Outro"])
+                porte_p = st.selectbox("Porte", ["Pequeno", "Médio", "Grande"])
                 foto_p = st.file_uploader("📷 Foto", type=["jpg", "png", "jpeg"])
             with c2:
                 tel_p = st.text_input("WhatsApp (com DDD)")
@@ -148,15 +152,17 @@ else:
 
                         dados = {
                             "nome": nome_p,
+                            "especie": especie_p,
+                            "porte": porte_p,
                             "idade": f"{st.session_state.user['tipo']}: {st.session_state.user['login']}",
                             "status": f"TEL:{tel_p}|LOCAL:{local_p}|DONO:{st.session_state.user['login']}",
                             "foto_url": url_img
                         }
                         supabase.table("pets").insert(dados).execute()
-                        st.success("Pet cadastrado!")
+                        st.success("Pet cadastrado com sucesso!")
                         st.rerun()
                     except Exception as e:
-                        st.error(f"Erro: {e}")
+                        st.error(f"Erro ao salvar: {e}")
 
 # --- 📋 MURAL DE PETS ---
 st.divider()
@@ -178,6 +184,7 @@ try:
                         st.image(p['foto_url'], use_container_width=True)
                 with col2:
                     st.write(f"### {p['nome'].upper()}")
+                    st.write(f"🐾 **{p.get('especie', 'PET')}** ({p.get('porte', 'Médio')})")
                     st.write(f"📌 {p['idade']}")
                     st.write(f"📍 {meta.get('LOCAL', 'São Paulo')}")
                 with col3:
