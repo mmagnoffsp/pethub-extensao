@@ -25,9 +25,9 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- CABEÇALHO ATUALIZADO ---
-st.title("🐾 São Paulo - São Paulo")
-st.subheader("Plataforma de Identificação Animal - Penha/SP")
+# --- CABEÇALHO ATUALIZADO (Sem menção à Penha) ---
+st.title("🐾 São Paulo - Brasil")
+st.subheader("Plataforma de Identificação Animal")
 
 # --- ÁREA DE CADASTRO ---
 with st.expander("➕ Cadastrar Novo Pet", expanded=True):
@@ -36,7 +36,7 @@ with st.expander("➕ Cadastrar Novo Pet", expanded=True):
         with col1:
             nome = st.text_input("Nome do Pet")
             especie = st.selectbox("Espécie", ["Cachorro", "Gato", "Outro"])
-            local = st.text_input("Porte/Localização (Bairro)")
+            local = st.text_input("Porte/Localização (Bairro/Cidade)")
             
             st.write("**Histórico de Saúde:**")
             c1_saude, c2_saude = st.columns(2)
