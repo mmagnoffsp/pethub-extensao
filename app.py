@@ -60,6 +60,7 @@ if "id" in query_params:
                     st.image(pet['foto_url'], use_container_width=True)
             with col_info:
                 st.markdown(f"# 🐾 {pet['nome'].upper()}")
+                # EXIBIÇÃO DA NOVA COLUNA PORTE
                 st.markdown(f"**Espécie:** {pet.get('especie', 'Não informada')} | **Porte:** {pet.get('porte', 'Não informado')}")
                 st.markdown(f"**Responsável:** {pet.get('idade', 'Resgate Independente')}")
                 
@@ -135,6 +136,7 @@ else:
             with c1:
                 nome_p = st.text_input("Nome do Animal")
                 especie_p = st.selectbox("Espécie", ["Cachorro", "Gato", "Outro"])
+                # ATUALIZAÇÃO: Campo de Porte no formulário
                 porte_p = st.selectbox("Porte", ["Pequeno", "Médio", "Grande"])
                 foto_p = st.file_uploader("📷 Foto", type=["jpg", "png", "jpeg"])
             with c2:
@@ -153,7 +155,7 @@ else:
                         dados = {
                             "nome": nome_p,
                             "especie": especie_p,
-                            "porte": porte_p,
+                            "porte": porte_p, # ATUALIZAÇÃO: Enviando a nova coluna
                             "idade": f"{st.session_state.user['tipo']}: {st.session_state.user['login']}",
                             "status": f"TEL:{tel_p}|LOCAL:{local_p}|DONO:{st.session_state.user['login']}",
                             "foto_url": url_img
@@ -184,12 +186,17 @@ try:
                         st.image(p['foto_url'], use_container_width=True)
                 with col2:
                     st.write(f"### {p['nome'].upper()}")
-                    st.write(f"🐾 **{p.get('especie', 'PET')}** ({p.get('porte', 'Médio')})")
+                    # ATUALIZAÇÃO: Exibindo Porte no Mural
+                    st.write(f"🐾 **{p.get('especie', 'PET')}** ({p.get('porte', 'Não informado')})")
                     st.write(f"📌 {p['idade']}")
                     st.write(f"📍 {meta.get('LOCAL', 'São Paulo')}")
                 with col3:
                     link_ind = f"https://guardiaopet-sp.streamlit.app/?id={p['id']}"
-                    st.image(qrcode.make(link_ind).tobitmap(), width=90, caption="Ficha do Pet")
+                    # Gerando QR Code para a ficha individual
+                    qr = qrcode.make(link_ind)
+                    buf = BytesIO()
+                    qr.save(buf, format="PNG")
+                    st.image(buf.getvalue(), width=90, caption="Ficha do Pet")
                 with col4:
                     if st.session_state.user:
                         if st.session_state.user['login'] == dono or st.session_state.user['tipo'] == "ADMIN":
