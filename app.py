@@ -42,6 +42,22 @@ def criar_link_whatsapp(telefone, nome_pet, pet_id):
     mensagem_url = urllib.parse.quote(mensagem)
     return f"https://wa.me/{numero_limpo}?text={mensagem_url}"
 
+def exibir_botoes_social(nome_pet, pet_id):
+    link_pet = f"https://guardiaopet-sp.streamlit.app/?id={pet_id}"
+    url_encoded = urllib.parse.quote(link_pet)
+    texto_encoded = urllib.parse.quote(f"Conheça o pet {nome_pet} para adoção no Guardião Pet SP! 🐾")
+    
+    c_fb, c_tw, c_x = st.columns(3)
+    with c_fb:
+        fb_link = f"https://www.facebook.com/sharer/sharer.php?u={url_encoded}"
+        st.markdown(f'<a href="{fb_link}" target="_blank" style="background-color: #4267B2; color: white; padding: 8px; text-align: center; text-decoration: none; display: block; border-radius: 5px; font-weight: bold; font-size: 12px;">📘 Facebook</a>', unsafe_allow_html=True)
+    with c_tw:
+        tw_link = f"https://twitter.com/intent/tweet?text={texto_encoded}&url={url_encoded}"
+        st.markdown(f'<a href="{tw_link}" target="_blank" style="background-color: #1DA1F2; color: white; padding: 8px; text-align: center; text-decoration: none; display: block; border-radius: 5px; font-weight: bold; font-size: 12px;">🐦 Twitter</a>', unsafe_allow_html=True)
+    with c_x:
+        x_link = f"https://x.com/intent/tweet?url={url_encoded}&text={texto_encoded}"
+        st.markdown(f'<a href="{x_link}" target="_blank" style="background-color: #000000; color: white; padding: 8px; text-align: center; text-decoration: none; display: block; border-radius: 5px; font-weight: bold; font-size: 12px;">𝕏 Post</a>', unsafe_allow_html=True)
+
 # --- 🎯 ROTEAMENTO PÚBLICO (VISTA DO ADOTANTE) ---
 query_params = st.query_params
 if "id" in query_params:
@@ -75,22 +91,8 @@ if "id" in query_params:
                     link_wa = criar_link_whatsapp(tel, pet['nome'], pet['id'])
                     st.markdown(f'<a href="{link_wa}" target="_blank" style="background-color: #25D366; color: white; padding: 15px; text-align: center; text-decoration: none; display: block; border-radius: 8px; font-weight: bold; font-size: 18px; margin-bottom: 20px;">💬 Falar com o Protetor no WhatsApp</a>', unsafe_allow_html=True)
 
-                # --- BOTÕES DE COMPARTILHAMENTO ---
-                st.write("📢 **Ajude a divulgar!**")
-                link_pet = f"https://guardiaopet-sp.streamlit.app/?id={pet['id']}"
-                url_encoded = urllib.parse.quote(link_pet)
-                texto_encoded = urllib.parse.quote(f"Conheça o pet {pet['nome']} que está para adoção no Guardião Pet SP! 🐾")
-                
-                c_fb, c_tw, c_x = st.columns(3)
-                with c_fb:
-                    fb_link = f"https://www.facebook.com/sharer/sharer.php?u={url_encoded}"
-                    st.markdown(f'<a href="{fb_link}" target="_blank" style="background-color: #4267B2; color: white; padding: 10px; text-align: center; text-decoration: none; display: block; border-radius: 5px; font-weight: bold; font-size: 14px;">📘 Facebook</a>', unsafe_allow_html=True)
-                with c_tw:
-                    tw_link = f"https://twitter.com/intent/tweet?text={texto_encoded}&url={url_encoded}"
-                    st.markdown(f'<a href="{tw_link}" target="_blank" style="background-color: #1DA1F2; color: white; padding: 10px; text-align: center; text-decoration: none; display: block; border-radius: 5px; font-weight: bold; font-size: 14px;">🐦 Twitter</a>', unsafe_allow_html=True)
-                with c_x:
-                    x_link = f"https://twitter.com/intent/tweet?url={url_encoded}"
-                    st.markdown(f'<a href="{x_link}" target="_blank" style="background-color: #000000; color: white; padding: 10px; text-align: center; text-decoration: none; display: block; border-radius: 5px; font-weight: bold; font-size: 14px;">𝕏 Post</a>', unsafe_allow_html=True)
+                st.write("📢 **Ajude a divulgar este pet!**")
+                exibir_botoes_social(pet['nome'], pet['id'])
 
             st.stop() 
     except Exception:
@@ -233,8 +235,12 @@ try:
                         st.write(f"🧬 **Raça:** {p.get('raca', 'SRD')} | 🐾 **{p.get('especie', 'PET')}** ({p.get('porte', 'Não informado')})")
                         st.write(f"🎨 **Cor:** {p.get('cor', 'Não informada')} | 🎂 **Idade:** {p.get('idade_animal', 'Não informada')}")
                         st.write(f"💉 **Vacinas:** {p.get('vacinas', 'Não informadas')}")
-                        st.write(f"🏠 **Resgate:** {p.get('local_resgate', 'Não informado')}")
                         st.write(f"📍 **Bairro:** {p.get('bairro', 'Não informado')} ({p.get('cidade', 'SP')}/{p.get('uf', 'SP')})")
+                        
+                        # Botões de compartilhamento dentro do card do Mural
+                        st.write("---")
+                        exibir_botoes_social(p['nome'], p['id'])
+
                     with col3:
                         qr = qrcode.make(f"https://guardiaopet-sp.streamlit.app/?id={p['id']}")
                         buf = BytesIO(); qr.save(buf, format="PNG")
