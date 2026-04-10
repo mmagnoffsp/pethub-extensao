@@ -21,7 +21,6 @@ try:
     URL = st.secrets["connections"]["supabase"]["url"]
     key = st.secrets["connections"]["supabase"]["key"]
 except Exception:
-    # Fallback caso os secrets não estejam carregados localmente
     URL = "https://bqawbkibffppaswlwsgr.supabase.co"
     key = "sb_publishable_3R_hLe9JN_2kD89rv9dzCQ_-rWznngn"
 
@@ -29,22 +28,18 @@ supabase: Client = create_client(URL, key)
 
 # --- FUNÇÕES DE SEGURANÇA E UTILITÁRIOS ---
 def hash_senha(senha):
-    """Criptografa a senha para segurança no banco de dados."""
     return hashlib.sha256(str.encode(senha)).hexdigest()
 
 def criar_link_whatsapp(telefone, nome_pet, pet_id):
-    """Gera link direto para o WhatsApp com mensagem personalizada."""
     numero_limpo = re.sub(r'\D', '', telefone)
     if len(numero_limpo) <= 11:
         numero_limpo = f"55{numero_limpo}"
-    
     link_site = f"https://guardiaopet-sp.streamlit.app/?id={pet_id}"
     mensagem = f"Olá! Vi o pet {nome_pet} no Guardião Pet SP e quero mais informações: {link_site}"
     mensagem_url = urllib.parse.quote(mensagem)
     return f"https://wa.me/{numero_limpo}?text={mensagem_url}"
 
 # --- 🎯 ROTEAMENTO PÚBLICO (VISTA DO ADOTANTE) ---
-# Esta parte roda primeiro. Se houver um ID na URL, mostra apenas o pet.
 query_params = st.query_params
 if "id" in query_params:
     pet_id_url = query_params["id"]
@@ -55,36 +50,24 @@ if "id" in query_params:
             if st.button("⬅️ Ver todos os pets no Mural"):
                 st.query_params.clear()
                 st.rerun()
-                
             st.divider()
             col_img, col_info = st.columns([1, 1.2])
-            
             with col_img:
                 if pet.get('foto_url'):
                     st.image(pet['foto_url'], use_container_width=True)
-                else:
-                    st.info("Pet sem foto disponível.")
-            
             with col_info:
                 st.markdown(f"# 🐾 {pet['nome'].upper()}")
                 st.markdown(f"**Responsável:** {pet.get('idade', 'Resgate Independente')}")
-                
                 status_raw = pet.get('status', '')
                 info = {p.split(":",1)[0]: p.split(":",1)[1] for p in status_raw.split("|") if ":" in p}
-                
                 st.write(f"📍 **Localização:** {info.get('LOCAL', 'São Paulo - SP')}")
-                
                 tel = info.get('TEL', '')
                 if tel:
                     link_wa = criar_link_whatsapp(tel, pet['nome'], pet['id'])
-                    st.markdown(f"""
-                        <a href="{link_wa}" target="_blank" style="background-color: #25D366; color: white; padding: 15px; text-align: center; text-decoration: none; display: block; border-radius: 8px; font-weight: bold; font-size: 18px;">
-                            💬 Falar com o Protetor no WhatsApp
-                        </a>
-                    """, unsafe_allow_html=True)
-            st.stop() # Bloqueia o restante da página para o adotante
+                    st.markdown(f'<a href="{link_wa}" target="_blank" style="background-color: #25D366; color: white; padding: 15px; text-align: center; text-decoration: none; display: block; border-radius: 8px; font-weight: bold; font-size: 18px;">💬 Falar com o Protetor no WhatsApp</a>', unsafe_allow_html=True)
+            st.stop() 
     except Exception:
-        st.error("Erro ao carregar os dados deste pet.")
+        st.error("Erro ao carregar os dados.")
 
 # --- 🔐 SISTEMA DE ACESSO (SIDEBAR) ---
 if "user" not in st.session_state:
@@ -94,17 +77,15 @@ with st.sidebar:
     st.title("👤 Acesso Restrito")
     if not st.session_state.user:
         opcao = st.radio("Escolha:", ["Fazer Login", "Criar Conta"])
-        u_login = st.text_input("Usuário")
+        u_login = st.text_input("Usuário").strip() # Remove espaços extras
         u_senha = st.text_input("Senha", type="password")
         
         if opcao == "Fazer Login":
             if st.button("Entrar"):
-                # VERIFICAÇÃO DO ADMINISTRADOR (VOCÊ)
                 if u_login == "admin" and u_senha == "cmmf2026":
                     st.session_state.user = {"login": "admin", "tipo": "ADMIN"}
                     st.rerun()
                 
-                # VERIFICAÇÃO DE USUÁRIOS COMUNS (ONG/LOJISTA/PROTETOR)
                 res_u = supabase.table("usuarios").select("*").eq("login", u_login).eq("senha", hash_senha(u_senha)).execute()
                 if res_u.data:
                     st.session_state.user = res_u.data[0]
@@ -113,20 +94,24 @@ with st.sidebar:
                     st.error("Login ou senha inválidos.")
         else:
             u_tipo = st.selectbox("Perfil:", ["Protetor", "ONG", "Lojista"])
-            if st.button("Cadastrar"):
+            if st.button("Confirmar Cadastro"):
                 if u_login and u_senha:
                     try:
+                        # Tentativa de inserção direta
                         supabase.table("usuarios").insert({
                             "login": u_login, 
                             "senha": hash_senha(u_senha), 
                             "tipo": u_tipo
                         }).execute()
-                        st.success("Conta criada! Agora faça o login.")
-                    except:
-                        st.error("Este usuário já existe.")
+                        st.success("Conta criada! Mude para 'Fazer Login'.")
+                    except Exception as e:
+                        # Mostra o erro real se falhar
+                        if "duplicate key" in str(e).lower():
+                            st.error(f"O usuário '{u_login}' já está cadastrado.")
+                        else:
+                            st.error(f"Erro ao cadastrar: {e}")
     else:
         st.write(f"Olá, **{st.session_state.user['login']}**")
-        st.write(f"Nível: {st.session_state.user['tipo']}")
         if st.button("Sair"):
             st.session_state.user = None
             st.rerun()
@@ -135,10 +120,8 @@ with st.sidebar:
 st.title("🐾 Guardião Pet SP")
 
 if not st.session_state.user:
-    st.warning("⚠️ Use a barra lateral para fazer login e cadastrar novos pets.")
-    st.info("Adotantes podem acessar as fichas diretamente via link ou QR Code.")
+    st.warning("⚠️ Use a barra lateral para fazer login.")
 else:
-    # FORMULÁRIO DE CADASTRO
     with st.expander("➕ Cadastrar Pet", expanded=True):
         with st.form("form_novo_pet", clear_on_submit=True):
             c1, c2 = st.columns(2)
@@ -165,10 +148,10 @@ else:
                             "foto_url": url_img
                         }
                         supabase.table("pets").insert(dados).execute()
-                        st.success("Pet cadastrado com sucesso!")
+                        st.success("Pet cadastrado!")
                         st.rerun()
                     except Exception as e:
-                        st.error(f"Erro ao salvar: {e}")
+                        st.error(f"Erro: {e}")
 
 # --- 📋 MURAL DE PETS ---
 st.divider()
@@ -180,26 +163,21 @@ if res_mural.data:
     for p in res_mural.data:
         with st.container(border=True):
             col1, col2, col3, col4 = st.columns([1.5, 3, 1.2, 0.8])
-            
-            # Extrair metadados do campo 'status'
             raw = p.get('status', '')
             meta = {item.split(":",1)[0]: item.split(":",1)[1] for item in raw.split("|") if ":" in item}
             dono = meta.get('DONO', '')
 
             with col1:
-                if p.get('foto_url'):
-                    st.image(p['foto_url'], use_container_width=True)
+                if p.get('foto_url'): st.image(p['foto_url'], use_container_width=True)
             with col2:
                 st.write(f"### {p['nome'].upper()}")
-                st.write(f"**Responsável:** {p['idade']}")
+                st.write(f"📌 {p['idade']}")
                 st.write(f"📍 {meta.get('LOCAL', 'São Paulo')}")
             with col3:
-                link_individual = f"https://guardiaopet-sp.streamlit.app/?id={p['id']}"
-                st.image(qrcode.make(link_individual).tobitmap(), width=90, caption="QR Code")
+                link_ind = f"https://guardiaopet-sp.streamlit.app/?id={p['id']}"
+                st.image(qrcode.make(link_ind).tobitmap(), width=90, caption="QR Code")
             with col4:
-                # PERMISSÃO PARA EXCLUIR:
                 if st.session_state.user:
-                    # Se for o dono OU se for você (ADMIN)
                     if st.session_state.user['login'] == dono or st.session_state.user['tipo'] == "ADMIN":
                         if st.button("🗑️", key=f"btn_del_{p['id']}"):
                             supabase.table("pets").delete().eq("id", p['id']).execute()
