@@ -21,6 +21,7 @@ try:
     URL = st.secrets["connections"]["supabase"]["url"]
     key = st.secrets["connections"]["supabase"]["key"]
 except Exception:
+    # Fallback para chaves diretas se os secrets falharem (útil para testes locais)
     URL = "https://bqawbkibffppaswlwsgr.supabase.co"
     key = "sb_publishable_3R_hLe9JN_2kD89rv9dzCQ_-rWznngn"
 
@@ -77,7 +78,7 @@ with st.sidebar:
     st.title("👤 Acesso Restrito")
     if not st.session_state.user:
         opcao = st.radio("Escolha:", ["Fazer Login", "Criar Conta"])
-        u_login = st.text_input("Usuário").strip() # Remove espaços extras
+        u_login = st.text_input("Usuário").strip()
         u_senha = st.text_input("Senha", type="password")
         
         if opcao == "Fazer Login":
@@ -97,7 +98,6 @@ with st.sidebar:
             if st.button("Confirmar Cadastro"):
                 if u_login and u_senha:
                     try:
-                        # Tentativa de inserção direta
                         supabase.table("usuarios").insert({
                             "login": u_login, 
                             "senha": hash_senha(u_senha), 
@@ -105,11 +105,22 @@ with st.sidebar:
                         }).execute()
                         st.success("Conta criada! Mude para 'Fazer Login'.")
                     except Exception as e:
-                        # Mostra o erro real se falhar
                         if "duplicate key" in str(e).lower():
                             st.error(f"O usuário '{u_login}' já está cadastrado.")
                         else:
                             st.error(f"Erro ao cadastrar: {e}")
+
+        # --- QR CODE ÚNICO DE DIVULGAÇÃO NA BARRA LATERAL ---
+        st.divider()
+        st.markdown("### 📲 Divulgue o Projeto")
+        st.caption("Aponte a câmera aqui para abrir o site e se cadastrar:")
+        
+        url_site = "https://guardiaopet-sp.streamlit.app"
+        # Usando API externa para garantir que o QR code carregue sem bugs de biblioteca
+        qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={url_site}"
+        st.image(qr_api_url, use_container_width=True)
+        st.info("💡 Escaneie para acessar no seu celular!")
+
     else:
         st.write(f"Olá, **{st.session_state.user['login']}**")
         if st.button("Sair"):
@@ -120,7 +131,7 @@ with st.sidebar:
 st.title("🐾 Guardião Pet SP")
 
 if not st.session_state.user:
-    st.warning("⚠️ Use a barra lateral para fazer login.")
+    st.warning("⚠️ Use a barra lateral para fazer login ou criar conta.")
 else:
     with st.expander("➕ Cadastrar Pet", expanded=True):
         with st.form("form_novo_pet", clear_on_submit=True):
@@ -157,28 +168,34 @@ else:
 st.divider()
 st.subheader("📋 Mural de Adoção")
 
-res_mural = supabase.table("pets").select("*").order("id", desc=True).execute()
+try:
+    res_mural = supabase.table("pets").select("*").order("id", desc=True).execute()
 
-if res_mural.data:
-    for p in res_mural.data:
-        with st.container(border=True):
-            col1, col2, col3, col4 = st.columns([1.5, 3, 1.2, 0.8])
-            raw = p.get('status', '')
-            meta = {item.split(":",1)[0]: item.split(":",1)[1] for item in raw.split("|") if ":" in item}
-            dono = meta.get('DONO', '')
+    if res_mural.data:
+        for p in res_mural.data:
+            with st.container(border=True):
+                col1, col2, col3, col4 = st.columns([1.5, 3, 1.2, 0.8])
+                raw = p.get('status', '')
+                meta = {item.split(":",1)[0]: item.split(":",1)[1] for item in raw.split("|") if ":" in item}
+                dono = meta.get('DONO', '')
 
-            with col1:
-                if p.get('foto_url'): st.image(p['foto_url'], use_container_width=True)
-            with col2:
-                st.write(f"### {p['nome'].upper()}")
-                st.write(f"📌 {p['idade']}")
-                st.write(f"📍 {meta.get('LOCAL', 'São Paulo')}")
-            with col3:
-                link_ind = f"https://guardiaopet-sp.streamlit.app/?id={p['id']}"
-                st.image(qrcode.make(link_ind).tobitmap(), width=90, caption="QR Code")
-            with col4:
-                if st.session_state.user:
-                    if st.session_state.user['login'] == dono or st.session_state.user['tipo'] == "ADMIN":
-                        if st.button("🗑️", key=f"btn_del_{p['id']}"):
-                            supabase.table("pets").delete().eq("id", p['id']).execute()
-                            st.rerun()
+                with col1:
+                    if p.get('foto_url'): 
+                        st.image(p['foto_url'], use_container_width=True)
+                with col2:
+                    st.write(f"### {p['nome'].upper()}")
+                    st.write(f"📌 {p['idade']}")
+                    st.write(f"📍 {meta.get('LOCAL', 'São Paulo')}")
+                with col3:
+                    link_ind = f"https://guardiaopet-sp.streamlit.app/?id={p['id']}"
+                    st.image(qrcode.make(link_ind).tobitmap(), width=90, caption="Ficha do Pet")
+                with col4:
+                    if st.session_state.user:
+                        if st.session_state.user['login'] == dono or st.session_state.user['tipo'] == "ADMIN":
+                            if st.button("🗑️", key=f"btn_del_{p['id']}"):
+                                supabase.table("pets").delete().eq("id", p['id']).execute()
+                                st.rerun()
+    else:
+        st.info("Nenhum pet cadastrado no momento.")
+except Exception as e:
+    st.error(f"Erro ao carregar o mural: {e}")
