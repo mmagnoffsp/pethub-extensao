@@ -7,6 +7,7 @@ import uuid
 import urllib.parse
 import re
 import hashlib
+from datetime import datetime
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
@@ -61,9 +62,20 @@ if "id" in query_params:
             with col_info:
                 st.markdown(f"# 🐾 {pet['nome'].upper()}")
                 st.markdown(f"**Espécie:** {pet.get('especie', 'Não informada')} | **Raça:** {pet.get('raca', 'SRD')}")
-                st.markdown(f"**Porte:** {pet.get('porte', 'Não informado')} | **Cor:** {pet.get('cor', 'Não informada')}")
-                st.markdown(f"**Idade:** {pet.get('idade_animal', 'Não informada')}")
-                st.markdown(f"💉 **Vacinas:** {pet.get('vacinas', 'Não informadas')}")
+                st.markdown(f"**Porte:** {pet.get('porte', 'Não informado')} | **Peso:** {pet.get('peso_pet', 'Não informado')}")
+                
+                # --- BLOCO MÉDICO ATUALIZADO ---
+                with st.expander("🩺 Prontuário de Castração e Saúde", expanded=True):
+                    c_status = "✅ Já Castrado" if pet.get('castrado') else "❌ Não Castrado"
+                    st.write(f"**Status:** {c_status}")
+                    if pet.get('data_castracao'):
+                        st.write(f"📅 **Data/Hora:** {pet.get('data_castracao')} às {pet.get('horario_castracao')}")
+                    st.write(f"🏥 **Clínica:** {pet.get('clinica_nome', 'Não informada')}")
+                    st.write(f"💉 **Vacinas:** {pet.get('vacinas', 'Não informadas')}")
+                    st.write(f"🧪 **Exames Pré-Op:** {pet.get('exames_pre', 'Não informado')}")
+                    st.write(f"📝 **Resultado Exames:** {pet.get('resultado_exames', 'Não informado')}")
+                    st.write(f"💊 **Pós-Operatório:** {pet.get('medicacao_pos', 'Não informada')}")
+
                 st.markdown(f"🏠 **Local de Resgate:** {pet.get('local_resgate', 'Não informado')}")
                 st.markdown(f"📍 **Onde está:** {pet.get('bairro', 'Não informado')} - {pet.get('cidade', 'São Paulo')}/{pet.get('uf', 'SP')}")
                 
@@ -123,23 +135,37 @@ else:
         sugestao = v_caes if especie_p == "Cachorro" else v_gatos if especie_p == "Gato" else ""
 
         with st.form("form_novo_pet", clear_on_submit=True):
+            st.subheader("📋 Informações do Animal")
             c1, c2 = st.columns(2)
             with c1:
                 nome_p = st.text_input("Nome do Animal")
                 idade_p = st.text_input("Idade (ex: 2 anos, filhote)")
                 cor_p = st.text_input("Cor/Pelagem")
                 porte_p = st.selectbox("Porte", ["Pequeno", "Médio", "Grande"])
+                peso_p = st.text_input("Peso do Pet (ex: 8.5kg)")
                 foto_p = st.file_uploader("📷 Foto", type=["jpg", "png", "jpeg"])
             with c2:
                 tel_p = st.text_input("WhatsApp (com DDD)")
-                resgate_p = st.text_input("Local de Resgate (Onde foi achado?)")
+                resgate_p = st.text_input("Local de Resgate")
                 bairro_p = st.text_input("Bairro Atual")
                 c_cidade, c_uf = st.columns([3, 1])
                 cidade_p = c_cidade.text_input("Cidade", value="São Paulo")
                 uf_p = c_uf.text_input("UF", value="SP")
                 vacinas_p = st.text_area("Vacinas", value=sugestao)
+
+            st.subheader("🩺 Prontuário de Castração")
+            m1, m2 = st.columns(2)
+            with m1:
+                castrado_p = st.checkbox("Animal já é castrado?")
+                data_c = st.date_input("Data da Cirurgia", value=None)
+                hora_c = st.text_input("Horário da Cirurgia (HH:MM)")
+                clinica_p = st.text_input("Clínica / Veterinário")
+            with m2:
+                exames_p = st.text_area("Exames Clínicos (Pré-operatório)")
+                res_exames_p = st.text_input("Resultado dos Exames")
+                med_pos_p = st.text_area("Medicação Pós-Operação")
             
-            if st.form_submit_button("✅ Salvar Cadastro"):
+            if st.form_submit_button("✅ Salvar Cadastro e Prontuário"):
                 if nome_p and tel_p:
                     try:
                         url_img = None
@@ -152,12 +178,17 @@ else:
                             "nome": nome_p, "especie": especie_p, "raca": raca_p, "porte": porte_p,
                             "idade_animal": idade_p, "cor": cor_p, "vacinas": vacinas_p,
                             "local_resgate": resgate_p, "bairro": bairro_p, "cidade": cidade_p, "uf": uf_p,
+                            "peso_pet": peso_p, "castrado": castrado_p,
+                            "data_castracao": str(data_c) if data_c else None,
+                            "horario_castracao": hora_c, "clinica_nome": clinica_p,
+                            "exames_pre": exames_p, "resultado_exames": res_exames_p,
+                            "medicacao_pos": med_pos_p,
                             "idade": f"{st.session_state.user['tipo']}: {st.session_state.user['login']}",
                             "status": f"TEL:{tel_p}|LOCAL:{bairro_p}|DONO:{st.session_state.user['login']}",
                             "foto_url": url_img
                         }
                         supabase.table("pets").insert(dados).execute()
-                        st.success("Pet cadastrado com sucesso!")
+                        st.success("Pet e Prontuário salvos com sucesso!")
                         st.rerun()
                     except Exception as e:
                         st.error(f"Erro ao salvar: {e}")
@@ -176,27 +207,26 @@ try:
         for p in res_mural.data:
             with st.container(border=True):
                 if st.session_state.edit_pet_id == p['id']:
-                    st.markdown(f"### 📝 Editando: {p['nome']}")
+                    st.markdown(f"### 📝 Editando Prontuário: {p['nome']}")
                     with st.form(key=f"edit_form_{p['id']}"):
                         e_col1, e_col2 = st.columns(2)
                         with e_col1:
                             en = st.text_input("Nome", value=p['nome'])
                             er = st.text_input("Raça", value=p.get('raca', ''))
-                            ei = st.text_input("Idade", value=p.get('idade_animal', ''))
-                            ecor = st.text_input("Cor", value=p.get('cor', ''))
+                            epeso = st.text_input("Peso", value=p.get('peso_pet', ''))
+                            ecast = st.checkbox("Castrado", value=p.get('castrado', False))
                             ev = st.text_area("Vacinas", value=p.get('vacinas', ''))
                         with e_col2:
-                            elr = st.text_input("Local Resgate", value=p.get('local_resgate', ''))
                             eb = st.text_input("Bairro", value=p.get('bairro', ''))
-                            ec = st.text_input("Cidade", value=p.get('cidade', ''))
-                            euf = st.text_input("UF", value=p.get('uf', ''))
+                            e_clinica = st.text_input("Clínica", value=p.get('clinica_nome', ''))
+                            e_meds = st.text_area("Medicação Pós", value=p.get('medicacao_pos', ''))
                             estatus = st.text_input("Status (Meta)", value=p.get('status', ''))
                         
                         if st.form_submit_button("💾 Salvar Alterações"):
                             upd = {
-                                "nome":en, "raca":er, "idade_animal":ei, "cor":ecor, 
-                                "vacinas":ev, "local_resgate":elr, "bairro":eb, 
-                                "cidade":ec, "uf":euf, "status":estatus
+                                "nome":en, "raca":er, "peso_pet":epeso, "castrado":ecast,
+                                "vacinas":ev, "bairro":eb, "clinica_nome":e_clinica,
+                                "medicacao_pos":e_meds, "status":estatus
                             }
                             supabase.table("pets").update(upd).eq("id", p['id']).execute()
                             st.session_state.edit_pet_id = None
@@ -213,11 +243,10 @@ try:
                         if p.get('foto_url'): st.image(p['foto_url'], use_container_width=True)
                     with col2:
                         st.write(f"### {p['nome'].upper()}")
-                        st.write(f"🧬 **Raça:** {p.get('raca', 'SRD')} | 🐾 **{p.get('especie', 'PET')}** ({p.get('porte', 'Não informado')})")
-                        st.write(f"🎨 **Cor:** {p.get('cor', 'Não informada')} | 🎂 **Idade:** {p.get('idade_animal', 'Não informada')}")
-                        st.write(f"💉 **Vacinas:** {p.get('vacinas', 'Não informadas')}")
-                        st.write(f"🏠 **Resgate:** {p.get('local_resgate', 'Não informado')}")
-                        st.write(f"📍 **Bairro:** {p.get('bairro', 'Não informado')} ({p.get('cidade', 'SP')}/{p.get('uf', 'SP')})")
+                        st.write(f"🧬 **Raça:** {p.get('raca', 'SRD')} | ⚖️ **Peso:** {p.get('peso_pet', '-')}")
+                        c_txt = "✅ Castrado" if p.get('castrado') else "❌ Não Castrado"
+                        st.write(f"✂️ {c_txt} | 🏥 Clínica: {p.get('clinica_nome', '-')}")
+                        st.write(f"📍 **Bairro:** {p.get('bairro', 'Não informado')} ({p.get('cidade', 'SP')})")
 
                     with col3:
                         qr = qrcode.make(f"https://guardiaopet-sp.streamlit.app/?id={p['id']}")
