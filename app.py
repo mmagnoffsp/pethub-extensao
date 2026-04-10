@@ -25,7 +25,8 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.title("🐾 Guardião Pet SP")
+# --- CABEÇALHO ATUALIZADO ---
+st.title("🐾 São Paulo - São Paulo")
 st.subheader("Plataforma de Identificação Animal - Penha/SP")
 
 # --- ÁREA DE CADASTRO ---
@@ -63,7 +64,7 @@ with st.expander("➕ Cadastrar Novo Pet", expanded=True):
         try:
             url_publica_foto = None
             
-            # 1. Upload da Foto para o Bucket que você criou: 'arquivos-pets'
+            # 1. Upload da Foto para o Bucket: 'arquivos-pets'
             if buffer_foto_final:
                 nome_arquivo = f"pet_{uuid.uuid4()}.jpg"
                 supabase.storage.from_("arquivos-pets").upload(
