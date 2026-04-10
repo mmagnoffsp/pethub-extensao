@@ -17,7 +17,6 @@ supabase: Client = create_client(URL, key)
 
 st.set_page_config(page_title="Guardião Pet SP", layout="wide", page_icon="🐾")
 
-# Estilo para seguir as Heurísticas de Nielsen (Consistência Visual)
 st.markdown("""
     <style>
     .stButton>button { width: 100%; border-radius: 5px; }
@@ -25,7 +24,6 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- CABEÇALHO ---
 st.title("🐾 São Paulo - Brasil")
 st.subheader("Plataforma de Identificação Animal")
 
@@ -64,7 +62,6 @@ with st.expander("➕ Cadastrar Novo Pet e Tutor", expanded=True):
         try:
             url_publica_foto = None
             
-            # Processamento da Foto
             if foto:
                 img = Image.open(foto).convert("RGB")
                 img.thumbnail((500, 500))
@@ -79,21 +76,21 @@ with st.expander("➕ Cadastrar Novo Pet e Tutor", expanded=True):
                 )
                 url_publica_foto = supabase.storage.from_("arquivos-pets").get_public_url(nome_arquivo)
 
-            # 2. Salvar Dados (Incluindo os novos campos)
-            # Nota: Certifique-se que estas colunas existam na sua tabela 'pets' no Neon/Supabase
+            # --- AJUSTE DOS NOMES DAS COLUNAS (Conforme seu print do Supabase) ---
             dados = {
                 "nome": nome, 
                 "especie": especie, 
-                "idade": endereco, # Usando o campo 'idade' existente para endereço por enquanto, ou ajuste no banco
-                "castrado": "Sim" if castrado else "Não",
-                "chipado": "Sim" if chipado else "Não",
-                "vacinas": ", ".join(vacinas_sel),
-                "url_foto": url_publica_foto,
-                "status": f"Tel: {telefone} | Insta: {instagram} | Email: {email}" # Agrupando contatos no status para teste rápido
+                "idade": endereco, # Gravando endereço na coluna 'idade' do print
+                "status": f"Tel: {telefone} | Insta: {instagram} | Email: {email}", # Gravando contatos no 'status'
+                "foto_url": url_publica_foto # MUDADO DE 'url_foto' PARA 'foto_url'
             }
             
+            # Adicionando informações de saúde no status para não perder dados
+            saude_info = f"Castrado: {'Sim' if castrado else 'Não'} | Chip: {'Sim' if chipado else 'Não'} | Vacinas: {', '.join(vacinas_sel)}"
+            dados["status"] = dados["status"] + " | " + saude_info
+            
             supabase.table("pets").insert(dados).execute()
-            st.success(f"🐾 {nome} e seus dados de contato foram registrados!")
+            st.success(f"🐾 {nome} cadastrado com sucesso!")
             st.rerun()
             
         except Exception as e:
@@ -102,7 +99,7 @@ with st.expander("➕ Cadastrar Novo Pet e Tutor", expanded=True):
 st.markdown("---")
 
 # --- MURAL DE PETS ---
-st.subheader("📋 Pets Registrados e Contatos")
+st.subheader("📋 Pets Registrados")
 res = supabase.table("pets").select("*").order("id", desc=True).execute()
 
 if res.data:
@@ -110,15 +107,15 @@ if res.data:
         with st.container(border=True):
             c1, c2, c3, c4 = st.columns([1.5, 2.5, 1, 1])
             with c1:
-                if pet.get('url_foto'):
-                    st.image(pet['url_foto'], use_container_width=True)
+                # Ajustado para ler 'foto_url'
+                if pet.get('foto_url'):
+                    st.image(pet['foto_url'], use_container_width=True)
                 else:
                     st.info("Sem foto")
             with c2:
                 st.write(f"### {pet['nome'].upper()}")
-                st.write(f"🏠 **Endereço:** {pet.get('idade', 'Não informado')}")
-                st.write(f"📞 **Contatos:** {pet.get('status', 'Não informado')}")
-                st.caption(f"💉 Vacinas: {pet.get('vacinas', 'Nenhuma')}")
+                st.write(f"🏠 **Endereço:** {pet.get('idade', 'N/A')}")
+                st.write(f"📞 **Contatos/Saúde:** {pet.get('status', 'N/A')}")
             with c3:
                 link_pet = f"https://guardiao-pet-sp.streamlit.app/?id={pet['id']}"
                 qr = qrcode.make(link_pet)
