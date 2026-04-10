@@ -4,6 +4,20 @@ from io import BytesIO
 from supabase import create_client, Client
 from PIL import Image
 import uuid
+import urllib.parse
+import re
+
+# --- FUNÇÃO AUXILIAR PARA WHATSAPP ---
+def criar_link_whatsapp(telefone, nome_pet):
+    # Remove tudo que não for número
+    numero_limpo = re.sub(r'\D', '', telefone)
+    # Garante que tem o código do país (Brasil = 55)
+    if len(numero_limpo) <= 11:
+        numero_limpo = f"55{numero_limpo}"
+    
+    mensagem = f"Olá! Vi o pet {nome_pet} no Guardião Pet SP e gostaria de entrar em contato."
+    mensagem_url = urllib.parse.quote(mensagem)
+    return f"https://wa.me/{numero_limpo}?text={mensagem_url}"
 
 # --- CONEXÃO SEGURA ---
 try:
@@ -21,6 +35,17 @@ st.markdown("""
     <style>
     .stButton>button { width: 100%; border-radius: 5px; }
     .stExpander { border: 1px solid #FF9800; }
+    .whatsapp-btn {
+        background-color: #25D366;
+        color: white;
+        padding: 10px;
+        text-align: center;
+        text-decoration: none;
+        display: block;
+        border-radius: 5px;
+        font-weight: bold;
+        margin-top: 5px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
@@ -53,7 +78,7 @@ with st.expander("➕ Cadastrar Novo Pet e Tutor", expanded=True):
             st.write("### 👤 Informações de Contato (Tutor)")
             endereco = st.text_input("🏠 Endereço Completo")
             email = st.text_input("📧 E-mail de Contato")
-            telefone = st.text_input("📞 Telefone / WhatsApp (com DDD)")
+            telefone = st.text_input("📞 Telefone / WhatsApp (ex: 11999999999)")
             instagram = st.text_input("📸 Instagram (ex: @usuario)")
             
         btn_salvar = st.form_submit_button("✅ Salvar no Guardião Pet")
@@ -76,18 +101,15 @@ with st.expander("➕ Cadastrar Novo Pet e Tutor", expanded=True):
                 )
                 url_publica_foto = supabase.storage.from_("arquivos-pets").get_public_url(nome_arquivo)
 
-            # --- AJUSTE DOS NOMES DAS COLUNAS (Conforme seu print do Supabase) ---
+            # --- ORGANIZAÇÃO DOS DADOS NO BANCO ---
+            # Guardamos o telefone bruto no campo status para processar no mural
             dados = {
                 "nome": nome, 
                 "especie": especie, 
-                "idade": endereco, # Gravando endereço na coluna 'idade' do print
-                "status": f"Tel: {telefone} | Insta: {instagram} | Email: {email}", # Gravando contatos no 'status'
-                "foto_url": url_publica_foto # MUDADO DE 'url_foto' PARA 'foto_url'
+                "idade": endereco, 
+                "status": f"TEL:{telefone}|INSTA:{instagram}|EMAIL:{email}|SAUDE:Castrado:{castrado},Chip:{chipado},Vacinas:{','.join(vacinas_sel)}",
+                "foto_url": url_publica_foto
             }
-            
-            # Adicionando informações de saúde no status para não perder dados
-            saude_info = f"Castrado: {'Sim' if castrado else 'Não'} | Chip: {'Sim' if chipado else 'Não'} | Vacinas: {', '.join(vacinas_sel)}"
-            dados["status"] = dados["status"] + " | " + saude_info
             
             supabase.table("pets").insert(dados).execute()
             st.success(f"🐾 {nome} cadastrado com sucesso!")
@@ -105,26 +127,55 @@ res = supabase.table("pets").select("*").order("id", desc=True).execute()
 if res.data:
     for pet in res.data:
         with st.container(border=True):
-            c1, c2, c3, c4 = st.columns([1.5, 2.5, 1, 1])
+            c1, c2, c3, c4 = st.columns([1.5, 3, 1.2, 0.8])
+            
+            # Extração de dados da string 'status'
+            status_raw = pet.get('status', '')
+            info = {}
+            if "|" in status_raw:
+                parts = status_raw.split("|")
+                for p in parts:
+                    if ":" in p:
+                        key_val = p.split(":", 1)
+                        info[key_val[0]] = key_val[1]
+
             with c1:
-                # Ajustado para ler 'foto_url'
                 if pet.get('foto_url'):
                     st.image(pet['foto_url'], use_container_width=True)
                 else:
                     st.info("Sem foto")
+            
             with c2:
-                st.write(f"### {pet['nome'].upper()}")
-                st.write(f"🏠 **Endereço:** {pet.get('idade', 'N/A')}")
-                st.write(f"📞 **Contatos/Saúde:** {pet.get('status', 'N/A')}")
+                st.write(f"### {pet['nome'].upper()} ({pet['especie']})")
+                st.write(f"🏠 **Local:** {pet.get('idade', 'N/A')}")
+                
+                # Exibição do Instagram clicável
+                insta = info.get('INSTA', '').replace('@', '')
+                if insta:
+                    st.markdown(f"📸 **Instagram:** [@{insta}](https://instagram.com/{insta})")
+                
+                # BOTÃO WHATSAPP DIRETO
+                tel = info.get('TEL', '')
+                if tel:
+                    link_wa = criar_link_whatsapp(tel, pet['nome'])
+                    st.markdown(f'<a href="{link_wa}" target="_blank" class="whatsapp-btn">💬 Chamar no WhatsApp</a>', unsafe_allow_html=True)
+                
+                # Informações de Saúde compactas
+                saude = info.get('SAUDE', 'N/A')
+                with st.expander("🩺 Ver Detalhes de Saúde"):
+                    st.write(saude.replace(',', ' | '))
+
             with c3:
                 link_pet = f"https://guardiao-pet-sp.streamlit.app/?id={pet['id']}"
                 qr = qrcode.make(link_pet)
                 buf_qr = BytesIO()
                 qr.save(buf_qr, format="PNG")
-                st.image(buf_qr.getvalue(), width=100)
-                st.download_button("💾 QR", buf_qr.getvalue(), f"qr_{pet['id']}.png", key=f"q_{pet['id']}")
+                st.image(buf_qr.getvalue(), width=120, caption="QR Code ID")
+                st.download_button("💾 Baixar QR", buf_qr.getvalue(), f"qr_{pet['id']}.png", key=f"q_{pet['id']}")
+            
             with c4:
-                if st.button("🗑️ Deletar", key=f"d_{pet['id']}", type="primary"):
+                st.write("---")
+                if st.button("🗑️", key=f"d_{pet['id']}", help="Deletar Registro"):
                     supabase.table("pets").delete().eq("id", pet['id']).execute()
                     st.rerun()
 else:
