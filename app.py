@@ -23,14 +23,21 @@ def criar_link_whatsapp(telefone, nome_pet, pet_id):
     if len(numero_limpo) <= 11:
         numero_limpo = f"55{numero_limpo}"
     
-    # O link que o interessado vai clicar
+    # URL do sistema para este pet específico
     link_site = f"https://guardiao-pet-sp.streamlit.app/?id={pet_id}"
     
     mensagem = f"Olá! Vi o pet {nome_pet} no Guardião Pet SP ({link_site}) e gostaria de mais informações."
     mensagem_url = urllib.parse.quote(mensagem)
     return f"https://wa.me/{numero_limpo}?text={mensagem_url}"
 
-st.set_page_config(page_title="Guardião Pet SP", layout="wide", page_icon="🐾")
+# --- CONFIGURAÇÃO DA PÁGINA ---
+# Adicionado initial_sidebar_state="collapsed" para garantir acesso público sem login
+st.set_page_config(
+    page_title="Guardião Pet SP", 
+    layout="wide", 
+    page_icon="🐾",
+    initial_sidebar_state="collapsed"
+)
 
 # --- ESTILIZAÇÃO ---
 st.markdown("""
@@ -49,8 +56,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# --- 🎯 LÓGICA DE ROTEAMENTO (SOLUÇÃO PARA O CLIENTE) ---
-# Esta parte intercepta o link do WhatsApp e mostra a ficha do pet
+# --- 🎯 LÓGICA DE ROTEAMENTO (VISTA DO CLIENTE/INTERESSADO) ---
 query_params = st.query_params
 if "id" in query_params:
     pet_id_url = query_params["id"]
@@ -58,7 +64,6 @@ if "id" in query_params:
     
     if res_pet.data:
         pet = res_pet.data[0]
-        # Botão para voltar ao site principal
         if st.button("⬅️ Ver todos os pets disponíveis"):
             st.query_params.clear()
             st.rerun()
@@ -76,7 +81,6 @@ if "id" in query_params:
             st.markdown(f"# 🐾 Conheça o {pet['nome'].upper()}")
             st.markdown(f"**Responsável:** {pet.get('idade', 'Resgate Independente')}")
             
-            # Extração de dados da string 'status'
             status_raw = pet.get('status', '')
             info = {p.split(":",1)[0]: p.split(":",1)[1] for p in status_raw.split("|") if ":" in p}
             
@@ -92,7 +96,7 @@ if "id" in query_params:
                 insta = info['INSTA'].replace('@', '')
                 st.markdown(f"📸 [Instagram do Responsável](https://instagram.com/{insta})")
         
-        st.stop() # Mata a execução aqui para o cliente não ver a tela de cadastro
+        st.stop() # Encerra aqui para quem vem pelo link do WhatsApp
 
 # --- 🏠 TELA PRINCIPAL (ADMIN / CADASTRO) ---
 st.title("🐾 Guardião Pet SP")
@@ -101,7 +105,6 @@ st.subheader("Plataforma de Identificação e Adoção")
 st.info("Escolha seu perfil para realizar um novo cadastro:")
 aba_protetor, aba_ong, aba_lojista = st.tabs(["🦸 Protetor Independente", "🏢 ONG", "🏪 Lojista Parceiro"])
 
-# Função de Cadastro Genérica
 def processar_cadastro(perfil_nome, entidade_nome):
     with st.form(f"form_{perfil_nome}", clear_on_submit=True):
         col1, col2 = st.columns(2)
