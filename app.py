@@ -7,13 +7,19 @@ import uuid
 import urllib.parse
 import re
 
-# --- FUNÇÃO AUXILIAR PARA WHATSAPP ---
-def criar_link_whatsapp(telefone, nome_pet):
+# --- FUNÇÃO AUXILIAR PARA WHATSAPP (AGORA COM LINK DO SITE) ---
+def criar_link_whatsapp(telefone, nome_pet, pet_id):
+    # Remove tudo que não for número
     numero_limpo = re.sub(r'\D', '', telefone)
+    # Garante que tem o código do país (Brasil = 55)
     if len(numero_limpo) <= 11:
         numero_limpo = f"55{numero_limpo}"
     
-    mensagem = f"Olá! Vi o pet {nome_pet} no Guardião Pet SP e gostaria de entrar em contato."
+    # URL do seu sistema para este pet específico
+    link_site = f"https://guardiao-pet-sp.streamlit.app/?id={pet_id}"
+    
+    # Mensagem personalizada incluindo o link
+    mensagem = f"Olá! Vi o pet {nome_pet} no Guardião Pet SP ({link_site}) e gostaria de entrar em contato."
     mensagem_url = urllib.parse.quote(mensagem)
     return f"https://wa.me/{numero_limpo}?text={mensagem_url}"
 
@@ -61,7 +67,7 @@ st.markdown("""
 st.title("🐾 São Paulo - Brasil")
 st.subheader("Plataforma de Identificação e Adoção")
 
-# --- SELEÇÃO DE PERFIL (TELA DE CADASTRO) ---
+# --- SELEÇÃO DE PERFIL ---
 st.info("Escolha seu perfil abaixo para abrir o formulário correto.")
 aba_protetor, aba_ong, aba_lojista = st.tabs([
     "🦸 Protetor Independente", 
@@ -93,7 +99,7 @@ def processar_cadastro(perfil_nome, entidade_nome):
             
             p_local = st.text_input("🏠 Endereço/Bairro onde o Pet está")
             p_tel = st.text_input("📞 WhatsApp (com DDD)")
-            p_insta = st.text_input("📸 Instagram (ex: @ong_exemplo)")
+            p_insta = st.text_input("📸 Instagram (ex: @usuario)")
             p_email = st.text_input("📧 E-mail")
             
         btn = st.form_submit_button(f"✅ Cadastrar como {perfil_nome}")
@@ -110,7 +116,6 @@ def processar_cadastro(perfil_nome, entidade_nome):
                     supabase.storage.from_("arquivos-pets").upload(nome_arq, buf.getvalue(), {"content-type": "image/jpeg"})
                     url_foto = supabase.storage.from_("arquivos-pets").get_public_url(nome_arq)
 
-                # Salvando o Perfil no campo 'idade' e detalhes no 'status'
                 dados = {
                     "nome": p_nome,
                     "especie": p_especie,
@@ -157,19 +162,18 @@ if res.data:
                 else: st.info("Sem foto")
             
             with c2:
-                # Badge de Identificação do Perfil
                 st.markdown(f'<div class="badge-perfil">{pet.get("idade", "Resgate")}</div>', unsafe_allow_html=True)
                 st.write(f"### {pet['nome'].upper()} ({pet['especie']})")
                 st.write(f"🏠 **Onde está:** {info.get('LOCAL', 'N/A')}")
                 
-                # Links de Contato
                 if info.get('INSTA'):
                     insta_limpo = info['INSTA'].replace('@', '')
                     st.markdown(f"📸 [Instagram @{insta_limpo}](https://instagram.com/{insta_limpo})")
                 
                 tel = info.get('TEL', '')
                 if tel:
-                    link_wa = criar_link_whatsapp(tel, pet['nome'])
+                    # AGORA ENVIANDO O ID PARA INCLUIR NO LINK DO WHATSAPP
+                    link_wa = criar_link_whatsapp(tel, pet['nome'], pet['id'])
                     st.markdown(f'<a href="{link_wa}" target="_blank" class="whatsapp-btn">💬 Falar com Responsável</a>', unsafe_allow_html=True)
 
             with c3:
