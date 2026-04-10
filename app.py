@@ -16,16 +16,18 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- CONEXÃO COM O BANCO ---
-try:
-    URL = st.secrets["connections"]["supabase"]["url"]
-    key = st.secrets["connections"]["supabase"]["key"]
-except Exception:
-    # Fallback para chaves diretas se os secrets falharem (útil para testes locais)
-    URL = "https://bqawbkibffppaswlwsgr.supabase.co"
-    key = "sb_publishable_3R_hLe9JN_2kD89rv9dzCQ_-rWznngn"
+# --- CONEXÃO COM O BANCO (SEGURA) ---
+@st.cache_resource
+def init_connection():
+    try:
+        url = st.secrets["connections"]["supabase"]["url"]
+        key = st.secrets["connections"]["supabase"]["key"]
+        return create_client(url, key)
+    except Exception:
+        st.error("⚠️ Erro de Configuração: Chaves de conexão não encontradas no Secrets.")
+        st.stop()
 
-supabase: Client = create_client(URL, key)
+supabase = init_connection()
 
 # --- FUNÇÕES DE SEGURANÇA E UTILITÁRIOS ---
 def hash_senha(senha):
@@ -83,10 +85,7 @@ with st.sidebar:
         
         if opcao == "Fazer Login":
             if st.button("Entrar"):
-                if u_login == "admin" and u_senha == "cmmf2026":
-                    st.session_state.user = {"login": "admin", "tipo": "ADMIN"}
-                    st.rerun()
-                
+                # Busca direta no banco de dados (Removida a senha 'admin' do código)
                 res_u = supabase.table("usuarios").select("*").eq("login", u_login).eq("senha", hash_senha(u_senha)).execute()
                 if res_u.data:
                     st.session_state.user = res_u.data[0]
@@ -110,16 +109,11 @@ with st.sidebar:
                         else:
                             st.error(f"Erro ao cadastrar: {e}")
 
-        # --- QR CODE ÚNICO DE DIVULGAÇÃO NA BARRA LATERAL ---
         st.divider()
         st.markdown("### 📲 Divulgue o Projeto")
-        st.caption("Aponte a câmera aqui para abrir o site e se cadastrar:")
-        
         url_site = "https://guardiaopet-sp.streamlit.app"
-        # Usando API externa para garantir que o QR code carregue sem bugs de biblioteca
         qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={url_site}"
         st.image(qr_api_url, use_container_width=True)
-        st.info("💡 Escaneie para acessar no seu celular!")
 
     else:
         st.write(f"Olá, **{st.session_state.user['login']}**")
