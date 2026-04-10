@@ -16,7 +16,7 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- CONEXÃO COM O BANCO (SEGURA) ---
+# --- CONEXÃO COM O BANCO ---
 @st.cache_resource
 def init_connection():
     try:
@@ -29,7 +29,7 @@ def init_connection():
 
 supabase = init_connection()
 
-# --- FUNÇÕES DE SEGURANÇA E UTILITÁRIOS ---
+# --- UTILITÁRIOS ---
 def hash_senha(senha):
     return hashlib.sha256(str.encode(senha)).hexdigest()
 
@@ -64,12 +64,11 @@ if "id" in query_params:
                 st.markdown(f"**Porte:** {pet.get('porte', 'Não informado')} | **Cor:** {pet.get('cor', 'Não informada')}")
                 st.markdown(f"**Idade:** {pet.get('idade_animal', 'Não informada')}")
                 st.markdown(f"💉 **Vacinas:** {pet.get('vacinas', 'Não informadas')}")
-                st.markdown(f"**Responsável:** {pet.get('idade', 'Resgate Independente')}")
+                st.markdown(f"🏠 **Resgatado em:** {pet.get('local_resgate', 'Local não informado')}")
+                st.markdown(f"📍 **Onde está:** {pet.get('bairro', 'Bairro não informado')} - {pet.get('cidade', 'São Paulo')}/{pet.get('uf', 'SP')}")
                 
                 status_raw = pet.get('status', '')
                 info = {p.split(":",1)[0]: p.split(":",1)[1] for p in status_raw.split("|") if ":" in p}
-                
-                st.write(f"📍 **Localização:** {info.get('LOCAL', 'São Paulo - SP')}")
                 tel = info.get('TEL', '')
                 if tel:
                     link_wa = criar_link_whatsapp(tel, pet['nome'], pet['id'])
@@ -78,7 +77,7 @@ if "id" in query_params:
     except Exception:
         st.error("Erro ao carregar os dados.")
 
-# --- 🔐 SISTEMA DE ACESSO (SIDEBAR) ---
+# --- 🔐 SISTEMA DE ACESSO ---
 if "user" not in st.session_state:
     st.session_state.user = None
 
@@ -97,28 +96,6 @@ with st.sidebar:
                     st.rerun()
                 else:
                     st.error("Login ou senha inválidos.")
-        else:
-            u_tipo = st.selectbox("Perfil:", ["Protetor", "ONG", "Lojista"])
-            if st.button("Confirmar Cadastro"):
-                if u_login and u_senha:
-                    try:
-                        supabase.table("usuarios").insert({
-                            "login": u_login, 
-                            "senha": hash_senha(u_senha), 
-                            "tipo": u_tipo
-                        }).execute()
-                        st.success("Conta criada! Mude para 'Fazer Login'.")
-                    except Exception as e:
-                        if "duplicate key" in str(e).lower():
-                            st.error(f"O usuário '{u_login}' já está cadastrado.")
-                        else:
-                            st.error(f"Erro ao cadastrar: {e}")
-
-        st.divider()
-        st.markdown("### 📲 Divulgue o Projeto")
-        url_site = "https://guardiaopet-sp.streamlit.app"
-        qr_api_url = f"https://api.qrserver.com/v1/create-qr-code/?size=250x250&data={url_site}"
-        st.image(qr_api_url, use_container_width=True)
     else:
         st.write(f"Olá, **{st.session_state.user['login']}**")
         if st.button("Sair"):
@@ -153,7 +130,11 @@ else:
                 foto_p = st.file_uploader("📷 Foto", type=["jpg", "png", "jpeg"])
             with c2:
                 tel_p = st.text_input("WhatsApp (com DDD)")
-                local_p = st.text_input("Bairro/Local")
+                resgate_p = st.text_input("Local de Resgate (Onde foi achado?)")
+                bairro_p = st.text_input("Bairro Atual")
+                c_cidade, c_uf = st.columns([3, 1])
+                cidade_p = c_cidade.text_input("Cidade", value="São Paulo")
+                uf_p = c_uf.text_input("UF", value="SP")
                 vacinas_p = st.text_area("Vacinas", value=sugestao)
             
             if st.form_submit_button("✅ Salvar Cadastro"):
@@ -166,15 +147,11 @@ else:
                             url_img = supabase.storage.from_("arquivos-pets").get_public_url(nome_arquivo)
 
                         dados = {
-                            "nome": nome_p,
-                            "especie": especie_p,
-                            "raca": raca_p,
-                            "porte": porte_p,
-                            "idade_animal": idade_p,
-                            "cor": cor_p,
-                            "vacinas": vacinas_p,
+                            "nome": nome_p, "especie": especie_p, "raca": raca_p, "porte": porte_p,
+                            "idade_animal": idade_p, "cor": cor_p, "vacinas": vacinas_p,
+                            "local_resgate": resgate_p, "bairro": bairro_p, "cidade": cidade_p, "uf": uf_p,
                             "idade": f"{st.session_state.user['tipo']}: {st.session_state.user['login']}",
-                            "status": f"TEL:{tel_p}|LOCAL:{local_p}|DONO:{st.session_state.user['login']}",
+                            "status": f"TEL:{tel_p}|LOCAL:{bairro_p}|DONO:{st.session_state.user['login']}",
                             "foto_url": url_img
                         }
                         supabase.table("pets").insert(dados).execute()
@@ -199,70 +176,50 @@ try:
                 if st.session_state.edit_pet_id == p['id']:
                     st.markdown(f"### 📝 Editando: {p['nome']}")
                     with st.form(key=f"edit_form_{p['id']}"):
-                        col_ed1, col_ed2 = st.columns(2)
-                        with col_ed1:
-                            edit_nome = st.text_input("Nome", value=p['nome'])
-                            edit_raca = st.text_input("Raça", value=p.get('raca', ''))
-                            edit_idade_animal = st.text_input("Idade", value=p.get('idade_animal', ''))
-                            edit_cor = st.text_input("Cor", value=p.get('cor', ''))
-                            edit_especie = st.selectbox("Espécie", ["Cachorro", "Gato", "Outro"], 
-                                                      index=["Cachorro", "Gato", "Outro"].index(p.get('especie', 'Cachorro')))
-                            edit_porte = st.selectbox("Porte", ["Pequeno", "Médio", "Grande"],
-                                                     index=["Pequeno", "Médio", "Grande"].index(p.get('porte', 'Médio')))
-                        with col_ed2:
-                            edit_vacinas = st.text_area("Vacinas", value=p.get('vacinas', ''))
-                            edit_status = st.text_input("Status (Metadados)", value=p.get('status', ''))
+                        e_col1, e_col2 = st.columns(2)
+                        with e_col1:
+                            en = st.text_input("Nome", value=p['nome'])
+                            er = st.text_input("Raça", value=p.get('raca', ''))
+                            ei = st.text_input("Idade", value=p.get('idade_animal', ''))
+                            ev = st.text_area("Vacinas", value=p.get('vacinas', ''))
+                        with e_col2:
+                            elr = st.text_input("Local Resgate", value=p.get('local_resgate', ''))
+                            eb = st.text_input("Bairro", value=p.get('bairro', ''))
+                            ec = st.text_input("Cidade", value=p.get('cidade', ''))
+                            estatus = st.text_input("Status (Meta)", value=p.get('status', ''))
                         
-                        b_col1, b_col2 = st.columns(2)
-                        if b_col1.form_submit_button("💾 Salvar Alterações"):
-                            dados_update = {
-                                "nome": edit_nome,
-                                "especie": edit_especie,
-                                "raca": edit_raca,
-                                "porte": edit_porte,
-                                "idade_animal": edit_idade_animal,
-                                "cor": edit_cor,
-                                "vacinas": edit_vacinas,
-                                "status": edit_status
-                            }
-                            supabase.table("pets").update(dados_update).eq("id", p['id']).execute()
+                        if st.form_submit_button("💾 Salvar Alterações"):
+                            upd = {"nome":en, "raca":er, "idade_animal":ei, "vacinas":ev, "local_resgate":elr, "bairro":eb, "cidade":ec, "status":estatus}
+                            supabase.table("pets").update(upd).eq("id", p['id']).execute()
                             st.session_state.edit_pet_id = None
-                            st.success("Pet atualizado!")
                             st.rerun()
-                        if b_col2.form_submit_button("❌ Cancelar"):
+                        if st.form_submit_button("❌ Cancelar"):
                             st.session_state.edit_pet_id = None
                             st.rerun()
                 else:
                     col1, col2, col3, col4 = st.columns([1.5, 3, 1.2, 0.8])
-                    raw = p.get('status', '')
-                    meta = {item.split(":",1)[0]: item.split(":",1)[1] for item in raw.split("|") if ":" in item}
-                    dono = meta.get('DONO', '')
-
+                    meta = {item.split(":",1)[0]: item.split(":",1)[1] for item in p.get('status','').split("|") if ":" in item}
+                    
                     with col1:
-                        if p.get('foto_url'): 
-                            st.image(p['foto_url'], use_container_width=True)
+                        if p.get('foto_url'): st.image(p['foto_url'], use_container_width=True)
                     with col2:
                         st.write(f"### {p['nome'].upper()}")
-                        st.write(f"🧬 **Raça:** {p.get('raca', 'SRD')} | 🐾 **{p.get('especie', 'PET')}** ({p.get('porte', 'Não informado')})")
-                        st.write(f"🎨 **Cor:** {p.get('cor', 'Não informada')} | 🎂 **Idade:** {p.get('idade_animal', 'Não informada')}")
-                        st.write(f"💉 **Vacinas:** {p.get('vacinas', 'Não informadas')}")
-                        st.write(f"📍 {meta.get('LOCAL', 'São Paulo')}")
+                        st.write(f"🧬 **Raça:** {p.get('raca', 'SRD')} | 🎂 **Idade:** {p.get('idade_animal')}")
+                        st.write(f"🏠 **Resgate:** {p.get('local_resgate', 'Não informado')}")
+                        st.write(f"📍 **Bairro:** {p.get('bairro', 'Não informado')} ({p.get('cidade')}/{p.get('uf')})")
                     with col3:
-                        link_ind = f"https://guardiaopet-sp.streamlit.app/?id={p['id']}"
-                        qr = qrcode.make(link_ind)
-                        buf = BytesIO()
-                        qr.save(buf, format="PNG")
+                        qr = qrcode.make(f"https://guardiaopet-sp.streamlit.app/?id={p['id']}")
+                        buf = BytesIO(); qr.save(buf, format="PNG")
                         st.image(buf.getvalue(), width=90, caption="Ficha do Pet")
                     with col4:
-                        if st.session_state.user:
-                            if st.session_state.user['login'] == dono or st.session_state.user['tipo'] == "ADMIN":
-                                if st.button("📝", key=f"btn_edit_{p['id']}"):
-                                    st.session_state.edit_pet_id = p['id']
-                                    st.rerun()
-                                if st.button("🗑️", key=f"btn_del_{p['id']}"):
-                                    supabase.table("pets").delete().eq("id", p['id']).execute()
-                                    st.rerun()
+                        if st.session_state.user and st.session_state.user['login'] == meta.get('DONO'):
+                            if st.button("📝", key=f"btn_edit_{p['id']}"):
+                                st.session_state.edit_pet_id = p['id']
+                                st.rerun()
+                            if st.button("🗑️", key=f"btn_del_{p['id']}"):
+                                supabase.table("pets").delete().eq("id", p['id']).execute()
+                                st.rerun()
     else:
-        st.info("Nenhum pet cadastrado no momento.")
+        st.info("Nenhum pet cadastrado.")
 except Exception as e:
-    st.error(f"Erro ao carregar o mural: {e}")
+    st.error(f"Erro no mural: {e}")
