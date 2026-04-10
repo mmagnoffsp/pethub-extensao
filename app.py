@@ -60,8 +60,9 @@ if "id" in query_params:
                     st.image(pet['foto_url'], use_container_width=True)
             with col_info:
                 st.markdown(f"# 🐾 {pet['nome'].upper()}")
-                st.markdown(f"**Espécie:** {pet.get('especie', 'Não informada')} | **Porte:** {pet.get('porte', 'Não informado')}")
-                st.markdown(f"**Idade:** {pet.get('idade_animal', 'Não informada')} | **Cor:** {pet.get('cor', 'Não informada')}")
+                st.markdown(f"**Espécie:** {pet.get('especie', 'Não informada')} | **Raça:** {pet.get('raca', 'SRD')}")
+                st.markdown(f"**Porte:** {pet.get('porte', 'Não informado')} | **Cor:** {pet.get('cor', 'Não informada')}")
+                st.markdown(f"**Idade:** {pet.get('idade_animal', 'Não informada')}")
                 st.markdown(f"💉 **Vacinas:** {pet.get('vacinas', 'Não informadas')}")
                 st.markdown(f"**Responsável:** {pet.get('idade', 'Resgate Independente')}")
                 
@@ -112,6 +113,7 @@ with st.sidebar:
                             st.error(f"O usuário '{u_login}' já está cadastrado.")
                         else:
                             st.error(f"Erro ao cadastrar: {e}")
+
         st.divider()
         st.markdown("### 📲 Divulgue o Projeto")
         url_site = "https://guardiaopet-sp.streamlit.app"
@@ -133,9 +135,11 @@ else:
     v_gatos = "V3/V4/V5, Raiva"
 
     with st.expander("➕ Cadastrar Pet", expanded=True):
-        c_esp, c_blank = st.columns([1, 1])
+        c_esp, c_raca_col = st.columns([1, 1])
         with c_esp:
             especie_p = st.selectbox("Espécie", ["Cachorro", "Gato", "Outro"])
+        with c_raca_col:
+            raca_p = st.text_input("Raça", placeholder="Ex: SRD, Poodle, Siamês...")
         
         sugestao = v_caes if especie_p == "Cachorro" else v_gatos if especie_p == "Gato" else ""
 
@@ -164,6 +168,7 @@ else:
                         dados = {
                             "nome": nome_p,
                             "especie": especie_p,
+                            "raca": raca_p,
                             "porte": porte_p,
                             "idade_animal": idade_p,
                             "cor": cor_p,
@@ -197,6 +202,7 @@ try:
                         col_ed1, col_ed2 = st.columns(2)
                         with col_ed1:
                             edit_nome = st.text_input("Nome", value=p['nome'])
+                            edit_raca = st.text_input("Raça", value=p.get('raca', ''))
                             edit_idade_animal = st.text_input("Idade", value=p.get('idade_animal', ''))
                             edit_cor = st.text_input("Cor", value=p.get('cor', ''))
                             edit_especie = st.selectbox("Espécie", ["Cachorro", "Gato", "Outro"], 
@@ -212,6 +218,7 @@ try:
                             dados_update = {
                                 "nome": edit_nome,
                                 "especie": edit_especie,
+                                "raca": edit_raca,
                                 "porte": edit_porte,
                                 "idade_animal": edit_idade_animal,
                                 "cor": edit_cor,
@@ -236,7 +243,7 @@ try:
                             st.image(p['foto_url'], use_container_width=True)
                     with col2:
                         st.write(f"### {p['nome'].upper()}")
-                        st.write(f"🐾 **{p.get('especie', 'PET')}** ({p.get('porte', 'Não informado')})")
+                        st.write(f"🧬 **Raça:** {p.get('raca', 'SRD')} | 🐾 **{p.get('especie', 'PET')}** ({p.get('porte', 'Não informado')})")
                         st.write(f"🎨 **Cor:** {p.get('cor', 'Não informada')} | 🎂 **Idade:** {p.get('idade_animal', 'Não informada')}")
                         st.write(f"💉 **Vacinas:** {p.get('vacinas', 'Não informadas')}")
                         st.write(f"📍 {meta.get('LOCAL', 'São Paulo')}")
