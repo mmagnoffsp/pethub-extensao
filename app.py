@@ -70,9 +70,28 @@ if "id" in query_params:
                 status_raw = pet.get('status', '')
                 info = {p.split(":",1)[0]: p.split(":",1)[1] for p in status_raw.split("|") if ":" in p}
                 tel = info.get('TEL', '')
+                
                 if tel:
                     link_wa = criar_link_whatsapp(tel, pet['nome'], pet['id'])
-                    st.markdown(f'<a href="{link_wa}" target="_blank" style="background-color: #25D366; color: white; padding: 15px; text-align: center; text-decoration: none; display: block; border-radius: 8px; font-weight: bold; font-size: 18px;">💬 Falar com o Protetor no WhatsApp</a>', unsafe_allow_html=True)
+                    st.markdown(f'<a href="{link_wa}" target="_blank" style="background-color: #25D366; color: white; padding: 15px; text-align: center; text-decoration: none; display: block; border-radius: 8px; font-weight: bold; font-size: 18px; margin-bottom: 20px;">💬 Falar com o Protetor no WhatsApp</a>', unsafe_allow_html=True)
+
+                # --- BOTÕES DE COMPARTILHAMENTO ---
+                st.write("📢 **Ajude a divulgar!**")
+                link_pet = f"https://guardiaopet-sp.streamlit.app/?id={pet['id']}"
+                url_encoded = urllib.parse.quote(link_pet)
+                texto_encoded = urllib.parse.quote(f"Conheça o pet {pet['nome']} que está para adoção no Guardião Pet SP! 🐾")
+                
+                c_fb, c_tw, c_x = st.columns(3)
+                with c_fb:
+                    fb_link = f"https://www.facebook.com/sharer/sharer.php?u={url_encoded}"
+                    st.markdown(f'<a href="{fb_link}" target="_blank" style="background-color: #4267B2; color: white; padding: 10px; text-align: center; text-decoration: none; display: block; border-radius: 5px; font-weight: bold; font-size: 14px;">📘 Facebook</a>', unsafe_allow_html=True)
+                with c_tw:
+                    tw_link = f"https://twitter.com/intent/tweet?text={texto_encoded}&url={url_encoded}"
+                    st.markdown(f'<a href="{tw_link}" target="_blank" style="background-color: #1DA1F2; color: white; padding: 10px; text-align: center; text-decoration: none; display: block; border-radius: 5px; font-weight: bold; font-size: 14px;">🐦 Twitter</a>', unsafe_allow_html=True)
+                with c_x:
+                    x_link = f"https://twitter.com/intent/tweet?url={url_encoded}"
+                    st.markdown(f'<a href="{x_link}" target="_blank" style="background-color: #000000; color: white; padding: 10px; text-align: center; text-decoration: none; display: block; border-radius: 5px; font-weight: bold; font-size: 14px;">𝕏 Post</a>', unsafe_allow_html=True)
+
             st.stop() 
     except Exception:
         st.error("Erro ao carregar os dados.")
