@@ -3,21 +3,30 @@ import qrcode
 from io import BytesIO
 from supabase import create_client, Client
 from PIL import Image
+import uuid
 
 # --- CONEXÃO SEGURA ---
 try:
-    URL = st.secrets["SUPABASE_URL"]
-    KEY = st.secrets["SUPABASE_KEY"]
+    URL = st.secrets["connections"]["supabase"]["url"]
+    key = st.secrets["connections"]["supabase"]["key"]
 except Exception:
     URL = "https://bqawbkibffppaswlwsgr.supabase.co"
-    KEY = "sb_publishable_3R_hLe9JN_2kD89rv9dzCQ_-rWznngn"
+    key = "sb_publishable_3R_hLe9JN_2kD89rv9dzCQ_-rWznngn"
 
-supabase: Client = create_client(URL, KEY)
+supabase: Client = create_client(URL, key)
 
-st.set_page_config(page_title="Guardião Pet Brasil", layout="wide", page_icon="🐾")
+st.set_page_config(page_title="Guardião Pet SP", layout="wide", page_icon="🐾")
 
-st.title("🐾 Guardião Pet Brasil")
-st.subheader("Plataforma Nacional de Identificação e Proteção Animal")
+# Estilo para seguir as Heurísticas de Nielsen (Consistência Visual)
+st.markdown("""
+    <style>
+    .stButton>button { width: 100%; border-radius: 5px; }
+    .stExpander { border: 1px solid #FF9800; }
+    </style>
+    """, unsafe_allow_html=True)
+
+st.title("🐾 Guardião Pet SP")
+st.subheader("Plataforma de Identificação Animal - Penha/SP")
 
 # --- ÁREA DE CADASTRO ---
 with st.expander("➕ Cadastrar Novo Pet", expanded=True):
@@ -26,7 +35,7 @@ with st.expander("➕ Cadastrar Novo Pet", expanded=True):
         with col1:
             nome = st.text_input("Nome do Pet")
             especie = st.selectbox("Espécie", ["Cachorro", "Gato", "Outro"])
-            info_adicional = st.text_input("Porte/Localização (Cidade/UF)")
+            local = st.text_input("Porte/Localização (Bairro)")
             
             st.write("**Histórico de Saúde:**")
             c1_saude, c2_saude = st.columns(2)
@@ -40,58 +49,78 @@ with st.expander("➕ Cadastrar Novo Pet", expanded=True):
         
         with col2:
             foto = st.file_uploader("📷 Foto do Pet", type=["jpg", "jpeg", "png"])
+            buffer_foto_final = None
             if foto:
                 img = Image.open(foto).convert("RGB")
                 img.thumbnail((500, 500))
-                buffer_img = BytesIO()
-                img.save(buffer_img, format="JPEG", quality=60)
-                st.image(buffer_img.getvalue(), caption="Prévia", width=200)
+                buffer_foto_final = BytesIO()
+                img.save(buffer_foto_final, format="JPEG", quality=60, optimize=True)
+                st.image(buffer_foto_final.getvalue(), caption="Prévia da Foto", width=200)
         
-        btn_salvar = st.form_submit_button("✅ Cadastrar Pet")
+        btn_salvar = st.form_submit_button("✅ Salvar no Guardião Pet")
 
     if btn_salvar and nome:
-        dados = {
-            "nome": nome, "especie": especie, "idade": info_adicional,
-            "castrado": "Sim" if castrado else "Não",
-            "chipado": "Sim" if chipado else "Não",
-            "vacinas": ", ".join(vacinas_sel)
-        }
         try:
+            url_publica_foto = None
+            
+            # 1. Upload da Foto para o Bucket que você criou: 'arquivos-pets'
+            if buffer_foto_final:
+                nome_arquivo = f"pet_{uuid.uuid4()}.jpg"
+                supabase.storage.from_("arquivos-pets").upload(
+                    path=nome_arquivo,
+                    file=buffer_foto_final.getvalue(),
+                    file_options={"content-type": "image/jpeg"}
+                )
+                url_publica_foto = supabase.storage.from_("arquivos-pets").get_public_url(nome_arquivo)
+
+            # 2. Salvar Dados no Neon.com
+            dados = {
+                "nome": nome, 
+                "especie": especie, 
+                "idade": local,
+                "castrado": "Sim" if castrado else "Não",
+                "chipado": "Sim" if chipado else "Não",
+                "vacinas": ", ".join(vacinas_sel),
+                "url_foto": url_publica_foto,
+                "status": "Disponível"
+            }
+            
             supabase.table("pets").insert(dados).execute()
-            st.success(f"{nome} cadastrado com sucesso!")
+            st.success(f"🐾 {nome} foi registrado com sucesso!")
             st.rerun()
+            
         except Exception as e:
-            st.error(f"Erro ao salvar: {e}")
+            st.error(f"Erro ao processar: {e}")
 
 st.markdown("---")
 
-# --- LISTAGEM (ORDENADA POR ID) ---
+# --- MURAL DE PETS ---
 st.subheader("📋 Pets Registrados")
 res = supabase.table("pets").select("*").order("id", desc=True).execute()
 
 if res.data:
     for pet in res.data:
         with st.container(border=True):
-            c1, c2, c3 = st.columns([2, 1, 1])
+            c1, c2, c3, c4 = st.columns([1.5, 2, 1, 1])
             with c1:
-                st.write(f"### {pet['nome'].upper()}")
-                st.write(f"📍 **Local:** {pet['idade']}")
-                st.write(f"🩺 **Saúde:** {'✂️ Castrado' if pet.get('castrado') == 'Sim' else '⭕ Não Castrado'} | "
-                            f"{'💾 Chipado' if pet.get('chipado') == 'Sim' else '⭕ Sem Chip'}")
-                if pet.get('vacinas'):
-                    st.info(f"💉 **Vacinas:** {pet['vacinas']}")
-            
+                if pet.get('url_foto'):
+                    st.image(pet['url_foto'], use_container_width=True)
+                else:
+                    st.info("Sem foto")
             with c2:
-                link_pet = f"https://guardiao-pet-sp-cmmf2026.streamlit.app/?id={pet['id']}"
+                st.write(f"### {pet['nome'].upper()}")
+                st.write(f"📍 {pet.get('idade', 'N/A')}")
+                st.caption(f"💉 Vacinas: {pet.get('vacinas', 'Nenhuma')}")
+            with c3:
+                link_pet = f"https://guardiao-pet-sp.streamlit.app/?id={pet['id']}"
                 qr = qrcode.make(link_pet)
                 buf_qr = BytesIO()
                 qr.save(buf_qr, format="PNG")
-                st.image(buf_qr.getvalue(), caption="QR Identificador", width=110)
-                st.download_button("💾 Baixar QR", buf_qr.getvalue(), f"qr_{pet['id']}.png", "image/png", key=f"dl_{pet['id']}")
-            
-            with c3:
-                if st.button("🗑️ Deletar", key=f"del_{pet['id']}", type="primary"):
+                st.image(buf_qr.getvalue(), width=100)
+                st.download_button("💾 QR", buf_qr.getvalue(), f"qr_{pet['id']}.png", key=f"q_{pet['id']}")
+            with c4:
+                if st.button("🗑️ Deletar", key=f"d_{pet['id']}", type="primary"):
                     supabase.table("pets").delete().eq("id", pet['id']).execute()
                     st.rerun()
 else:
-    st.info("Nenhum pet registrado no momento.")
+    st.info("Nenhum pet no mural.")
