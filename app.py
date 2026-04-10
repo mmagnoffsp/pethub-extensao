@@ -60,7 +60,6 @@ if "id" in query_params:
                     st.image(pet['foto_url'], use_container_width=True)
             with col_info:
                 st.markdown(f"# 🐾 {pet['nome'].upper()}")
-                # EXIBIÇÃO DA NOVA COLUNA PORTE
                 st.markdown(f"**Espécie:** {pet.get('especie', 'Não informada')} | **Porte:** {pet.get('porte', 'Não informado')}")
                 st.markdown(f"**Responsável:** {pet.get('idade', 'Resgate Independente')}")
                 
@@ -136,7 +135,6 @@ else:
             with c1:
                 nome_p = st.text_input("Nome do Animal")
                 especie_p = st.selectbox("Espécie", ["Cachorro", "Gato", "Outro"])
-                # ATUALIZAÇÃO: Campo de Porte no formulário
                 porte_p = st.selectbox("Porte", ["Pequeno", "Médio", "Grande"])
                 foto_p = st.file_uploader("📷 Foto", type=["jpg", "png", "jpeg"])
             with c2:
@@ -155,7 +153,7 @@ else:
                         dados = {
                             "nome": nome_p,
                             "especie": especie_p,
-                            "porte": porte_p, # ATUALIZAÇÃO: Enviando a nova coluna
+                            "porte": porte_p,
                             "idade": f"{st.session_state.user['tipo']}: {st.session_state.user['login']}",
                             "status": f"TEL:{tel_p}|LOCAL:{local_p}|DONO:{st.session_state.user['login']}",
                             "foto_url": url_img
@@ -170,39 +168,78 @@ else:
 st.divider()
 st.subheader("📋 Mural de Adoção")
 
+# Estado para controlar qual pet está sendo editado
+if "edit_pet_id" not in st.session_state:
+    st.session_state.edit_pet_id = None
+
 try:
     res_mural = supabase.table("pets").select("*").order("id", desc=True).execute()
 
     if res_mural.data:
         for p in res_mural.data:
             with st.container(border=True):
-                col1, col2, col3, col4 = st.columns([1.5, 3, 1.2, 0.8])
-                raw = p.get('status', '')
-                meta = {item.split(":",1)[0]: item.split(":",1)[1] for item in raw.split("|") if ":" in item}
-                dono = meta.get('DONO', '')
+                # Se este pet for o selecionado para edição, mostra o formulário
+                if st.session_state.edit_pet_id == p['id']:
+                    st.markdown(f"### 📝 Editando: {p['nome']}")
+                    with st.form(key=f"edit_form_{p['id']}"):
+                        col_ed1, col_ed2 = st.columns(2)
+                        with col_ed1:
+                            edit_nome = st.text_input("Nome", value=p['nome'])
+                            edit_especie = st.selectbox("Espécie", ["Cachorro", "Gato", "Outro"], 
+                                                      index=["Cachorro", "Gato", "Outro"].index(p.get('especie', 'Cachorro')))
+                            edit_porte = st.selectbox("Porte", ["Pequeno", "Médio", "Grande"],
+                                                     index=["Pequeno", "Médio", "Grande"].index(p.get('porte', 'Médio')))
+                        with col_ed2:
+                            edit_status = st.text_input("Status (Metadados)", value=p.get('status', ''))
+                        
+                        b_col1, b_col2 = st.columns(2)
+                        if b_col1.form_submit_button("💾 Salvar Alterações"):
+                            dados_update = {
+                                "nome": edit_nome,
+                                "especie": edit_especie,
+                                "porte": edit_porte,
+                                "status": edit_status
+                            }
+                            supabase.table("pets").update(dados_update).eq("id", p['id']).execute()
+                            st.session_state.edit_pet_id = None
+                            st.success("Pet atualizado!")
+                            st.rerun()
+                        if b_col2.form_submit_button("❌ Cancelar"):
+                            st.session_state.edit_pet_id = None
+                            st.rerun()
+                
+                else:
+                    # Visualização normal do card
+                    col1, col2, col3, col4 = st.columns([1.5, 3, 1.2, 0.8])
+                    raw = p.get('status', '')
+                    meta = {item.split(":",1)[0]: item.split(":",1)[1] for item in raw.split("|") if ":" in item}
+                    dono = meta.get('DONO', '')
 
-                with col1:
-                    if p.get('foto_url'): 
-                        st.image(p['foto_url'], use_container_width=True)
-                with col2:
-                    st.write(f"### {p['nome'].upper()}")
-                    # ATUALIZAÇÃO: Exibindo Porte no Mural
-                    st.write(f"🐾 **{p.get('especie', 'PET')}** ({p.get('porte', 'Não informado')})")
-                    st.write(f"📌 {p['idade']}")
-                    st.write(f"📍 {meta.get('LOCAL', 'São Paulo')}")
-                with col3:
-                    link_ind = f"https://guardiaopet-sp.streamlit.app/?id={p['id']}"
-                    # Gerando QR Code para a ficha individual
-                    qr = qrcode.make(link_ind)
-                    buf = BytesIO()
-                    qr.save(buf, format="PNG")
-                    st.image(buf.getvalue(), width=90, caption="Ficha do Pet")
-                with col4:
-                    if st.session_state.user:
-                        if st.session_state.user['login'] == dono or st.session_state.user['tipo'] == "ADMIN":
-                            if st.button("🗑️", key=f"btn_del_{p['id']}"):
-                                supabase.table("pets").delete().eq("id", p['id']).execute()
-                                st.rerun()
+                    with col1:
+                        if p.get('foto_url'): 
+                            st.image(p['foto_url'], use_container_width=True)
+                    with col2:
+                        st.write(f"### {p['nome'].upper()}")
+                        st.write(f"🐾 **{p.get('especie', 'PET')}** ({p.get('porte', 'Não informado')})")
+                        st.write(f"📌 {p['idade']}")
+                        st.write(f"📍 {meta.get('LOCAL', 'São Paulo')}")
+                    with col3:
+                        link_ind = f"https://guardiaopet-sp.streamlit.app/?id={p['id']}"
+                        qr = qrcode.make(link_ind)
+                        buf = BytesIO()
+                        qr.save(buf, format="PNG")
+                        st.image(buf.getvalue(), width=90, caption="Ficha do Pet")
+                    with col4:
+                        if st.session_state.user:
+                            if st.session_state.user['login'] == dono or st.session_state.user['tipo'] == "ADMIN":
+                                # BOTÃO EDITAR
+                                if st.button("📝", key=f"btn_edit_{p['id']}"):
+                                    st.session_state.edit_pet_id = p['id']
+                                    st.rerun()
+                                # BOTÃO DELETAR
+                                if st.button("🗑️", key=f"btn_del_{p['id']}"):
+                                    supabase.table("pets").delete().eq("id", p['id']).execute()
+                                    st.rerun()
     else:
         st.info("Nenhum pet cadastrado no momento.")
 except Exception as e:
