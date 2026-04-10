@@ -7,7 +7,7 @@ import uuid
 import urllib.parse
 import re
 
-# --- CONFIGURAÇÃO DA PÁGINA (DEVE SER A PRIMEIRA COISA) ---
+# --- CONFIGURAÇÃO DA PÁGINA ---
 st.set_page_config(
     page_title="Guardião Pet SP", 
     layout="wide", 
@@ -31,15 +31,14 @@ def criar_link_whatsapp(telefone, nome_pet, pet_id):
     if len(numero_limpo) <= 11:
         numero_limpo = f"55{numero_limpo}"
     
-    # URL encurtada para evitar bugs de caracteres especiais no Zap
-    link_site = f"https://guardiao-pet-sp.streamlit.app/?id={pet_id}"
+    # URL ATUALIZADA para o novo subdomínio
+    link_site = f"https://guardiaopet-sp.streamlit.app/?id={pet_id}"
     
     mensagem = f"Olá! Vi o pet {nome_pet} no Guardião Pet SP e quero mais informações: {link_site}"
     mensagem_url = urllib.parse.quote(mensagem)
     return f"https://wa.me/{numero_limpo}?text={mensagem_url}"
 
 # --- 🎯 LÓGICA DE ROTEAMENTO (VISTA DO CLIENTE) ---
-# Executamos isso no topo para interceptar o acesso antes de carregar o painel administrativo
 query_params = st.query_params
 if "id" in query_params:
     pet_id_url = query_params["id"]
@@ -80,11 +79,11 @@ if "id" in query_params:
                         </a>
                     """, unsafe_allow_html=True)
             
-            st.stop() # IMPEDE O CARREGAMENTO DO RESTANTE DO APP PARA O CLIENTE
+            st.stop() 
     except Exception:
         st.error("Erro ao carregar os dados do pet.")
 
-# --- ESTILIZAÇÃO (SÓ CARREGA SE NÃO FOR LINK DIRETO) ---
+# --- ESTILIZAÇÃO ---
 st.markdown("""
     <style>
     .stButton>button { width: 100%; border-radius: 5px; }
@@ -176,8 +175,12 @@ if res.data:
                     link_wa = criar_link_whatsapp(tel, pet['nome'], pet['id'])
                     st.markdown(f'<a href="{link_wa}" target="_blank" style="background-color: #25D366; color: white; padding: 10px; text-decoration: none; border-radius: 5px; font-weight: bold;">💬 Testar Link Zap</a>', unsafe_allow_html=True)
             with c3:
-                link_p = f"https://guardiao-pet-sp.streamlit.app/?id={pet['id']}"
-                st.image(qrcode.make(link_p).tobitmap(), width=100, caption="QR Code")
+                # URL ATUALIZADA no QR Code também
+                link_p = f"https://guardiaopet-sp.streamlit.app/?id={pet['id']}"
+                qr_img = qrcode.make(link_p)
+                buf_qr = BytesIO()
+                qr_img.save(buf_qr, format="PNG")
+                st.image(buf_qr.getvalue(), width=110, caption="QR Code")
             with c4:
                 if st.button("🗑️", key=f"del_{pet['id']}"):
                     supabase.table("pets").delete().eq("id", pet['id']).execute()
