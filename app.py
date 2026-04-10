@@ -61,6 +61,7 @@ if "id" in query_params:
             with col_info:
                 st.markdown(f"# 🐾 {pet['nome'].upper()}")
                 st.markdown(f"**Espécie:** {pet.get('especie', 'Não informada')} | **Porte:** {pet.get('porte', 'Não informado')}")
+                st.markdown(f"**Idade:** {pet.get('idade_animal', 'Não informada')} | **Cor:** {pet.get('cor', 'Não informada')}")
                 st.markdown(f"💉 **Vacinas:** {pet.get('vacinas', 'Não informadas')}")
                 st.markdown(f"**Responsável:** {pet.get('idade', 'Resgate Independente')}")
                 
@@ -111,7 +112,6 @@ with st.sidebar:
                             st.error(f"O usuário '{u_login}' já está cadastrado.")
                         else:
                             st.error(f"Erro ao cadastrar: {e}")
-
         st.divider()
         st.markdown("### 📲 Divulgue o Projeto")
         url_site = "https://guardiaopet-sp.streamlit.app"
@@ -129,12 +129,10 @@ st.title("🐾 Guardião Pet SP")
 if not st.session_state.user:
     st.warning("⚠️ Use a barra lateral para fazer login ou criar conta.")
 else:
-    # Definição das vacinas sugeridas
     v_caes = "V8/V10, Raiva, Gripe, Giárdia"
     v_gatos = "V3/V4/V5, Raiva"
 
     with st.expander("➕ Cadastrar Pet", expanded=True):
-        # Seleção de espécie fora do form para atualizar as vacinas em tempo real
         c_esp, c_blank = st.columns([1, 1])
         with c_esp:
             especie_p = st.selectbox("Espécie", ["Cachorro", "Gato", "Outro"])
@@ -145,6 +143,8 @@ else:
             c1, c2 = st.columns(2)
             with c1:
                 nome_p = st.text_input("Nome do Animal")
+                idade_p = st.text_input("Idade (ex: 2 anos, filhote)")
+                cor_p = st.text_input("Cor/Pelagem")
                 porte_p = st.selectbox("Porte", ["Pequeno", "Médio", "Grande"])
                 foto_p = st.file_uploader("📷 Foto", type=["jpg", "png", "jpeg"])
             with c2:
@@ -165,6 +165,8 @@ else:
                             "nome": nome_p,
                             "especie": especie_p,
                             "porte": porte_p,
+                            "idade_animal": idade_p,
+                            "cor": cor_p,
                             "vacinas": vacinas_p,
                             "idade": f"{st.session_state.user['tipo']}: {st.session_state.user['login']}",
                             "status": f"TEL:{tel_p}|LOCAL:{local_p}|DONO:{st.session_state.user['login']}",
@@ -195,6 +197,8 @@ try:
                         col_ed1, col_ed2 = st.columns(2)
                         with col_ed1:
                             edit_nome = st.text_input("Nome", value=p['nome'])
+                            edit_idade_animal = st.text_input("Idade", value=p.get('idade_animal', ''))
+                            edit_cor = st.text_input("Cor", value=p.get('cor', ''))
                             edit_especie = st.selectbox("Espécie", ["Cachorro", "Gato", "Outro"], 
                                                       index=["Cachorro", "Gato", "Outro"].index(p.get('especie', 'Cachorro')))
                             edit_porte = st.selectbox("Porte", ["Pequeno", "Médio", "Grande"],
@@ -209,6 +213,8 @@ try:
                                 "nome": edit_nome,
                                 "especie": edit_especie,
                                 "porte": edit_porte,
+                                "idade_animal": edit_idade_animal,
+                                "cor": edit_cor,
                                 "vacinas": edit_vacinas,
                                 "status": edit_status
                             }
@@ -231,6 +237,7 @@ try:
                     with col2:
                         st.write(f"### {p['nome'].upper()}")
                         st.write(f"🐾 **{p.get('especie', 'PET')}** ({p.get('porte', 'Não informado')})")
+                        st.write(f"🎨 **Cor:** {p.get('cor', 'Não informada')} | 🎂 **Idade:** {p.get('idade_animal', 'Não informada')}")
                         st.write(f"💉 **Vacinas:** {p.get('vacinas', 'Não informadas')}")
                         st.write(f"📍 {meta.get('LOCAL', 'São Paulo')}")
                     with col3:
