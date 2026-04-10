@@ -64,8 +64,8 @@ if "id" in query_params:
                 st.markdown(f"**Porte:** {pet.get('porte', 'Não informado')} | **Cor:** {pet.get('cor', 'Não informada')}")
                 st.markdown(f"**Idade:** {pet.get('idade_animal', 'Não informada')}")
                 st.markdown(f"💉 **Vacinas:** {pet.get('vacinas', 'Não informadas')}")
-                st.markdown(f"🏠 **Resgatado em:** {pet.get('local_resgate', 'Local não informado')}")
-                st.markdown(f"📍 **Onde está:** {pet.get('bairro', 'Bairro não informado')} - {pet.get('cidade', 'São Paulo')}/{pet.get('uf', 'SP')}")
+                st.markdown(f"🏠 **Local de Resgate:** {pet.get('local_resgate', 'Não informado')}")
+                st.markdown(f"📍 **Onde está:** {pet.get('bairro', 'Não informado')} - {pet.get('cidade', 'São Paulo')}/{pet.get('uf', 'SP')}")
                 
                 status_raw = pet.get('status', '')
                 info = {p.split(":",1)[0]: p.split(":",1)[1] for p in status_raw.split("|") if ":" in p}
@@ -181,15 +181,21 @@ try:
                             en = st.text_input("Nome", value=p['nome'])
                             er = st.text_input("Raça", value=p.get('raca', ''))
                             ei = st.text_input("Idade", value=p.get('idade_animal', ''))
+                            ecor = st.text_input("Cor", value=p.get('cor', ''))
                             ev = st.text_area("Vacinas", value=p.get('vacinas', ''))
                         with e_col2:
                             elr = st.text_input("Local Resgate", value=p.get('local_resgate', ''))
                             eb = st.text_input("Bairro", value=p.get('bairro', ''))
                             ec = st.text_input("Cidade", value=p.get('cidade', ''))
+                            euf = st.text_input("UF", value=p.get('uf', ''))
                             estatus = st.text_input("Status (Meta)", value=p.get('status', ''))
                         
                         if st.form_submit_button("💾 Salvar Alterações"):
-                            upd = {"nome":en, "raca":er, "idade_animal":ei, "vacinas":ev, "local_resgate":elr, "bairro":eb, "cidade":ec, "status":estatus}
+                            upd = {
+                                "nome":en, "raca":er, "idade_animal":ei, "cor":ecor, 
+                                "vacinas":ev, "local_resgate":elr, "bairro":eb, 
+                                "cidade":ec, "uf":euf, "status":estatus
+                            }
                             supabase.table("pets").update(upd).eq("id", p['id']).execute()
                             st.session_state.edit_pet_id = None
                             st.rerun()
@@ -199,20 +205,23 @@ try:
                 else:
                     col1, col2, col3, col4 = st.columns([1.5, 3, 1.2, 0.8])
                     meta = {item.split(":",1)[0]: item.split(":",1)[1] for item in p.get('status','').split("|") if ":" in item}
-                    
+                    dono = meta.get('DONO', '')
+
                     with col1:
                         if p.get('foto_url'): st.image(p['foto_url'], use_container_width=True)
                     with col2:
                         st.write(f"### {p['nome'].upper()}")
-                        st.write(f"🧬 **Raça:** {p.get('raca', 'SRD')} | 🎂 **Idade:** {p.get('idade_animal')}")
+                        st.write(f"🧬 **Raça:** {p.get('raca', 'SRD')} | 🐾 **{p.get('especie', 'PET')}** ({p.get('porte', 'Não informado')})")
+                        st.write(f"🎨 **Cor:** {p.get('cor', 'Não informada')} | 🎂 **Idade:** {p.get('idade_animal', 'Não informada')}")
+                        st.write(f"💉 **Vacinas:** {p.get('vacinas', 'Não informadas')}")
                         st.write(f"🏠 **Resgate:** {p.get('local_resgate', 'Não informado')}")
-                        st.write(f"📍 **Bairro:** {p.get('bairro', 'Não informado')} ({p.get('cidade')}/{p.get('uf')})")
+                        st.write(f"📍 **Bairro:** {p.get('bairro', 'Não informado')} ({p.get('cidade', 'SP')}/{p.get('uf', 'SP')})")
                     with col3:
                         qr = qrcode.make(f"https://guardiaopet-sp.streamlit.app/?id={p['id']}")
                         buf = BytesIO(); qr.save(buf, format="PNG")
                         st.image(buf.getvalue(), width=90, caption="Ficha do Pet")
                     with col4:
-                        if st.session_state.user and st.session_state.user['login'] == meta.get('DONO'):
+                        if st.session_state.user and (st.session_state.user['login'] == dono or st.session_state.user.get('tipo') == "ADMIN"):
                             if st.button("📝", key=f"btn_edit_{p['id']}"):
                                 st.session_state.edit_pet_id = p['id']
                                 st.rerun()
