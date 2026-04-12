@@ -99,17 +99,38 @@ with st.sidebar:
     st.title("👤 Acesso Restrito")
     if not st.session_state.user:
         opcao = st.radio("Escolha:", ["Fazer Login", "Criar Conta"])
-        u_login = st.text_input("Usuário").strip()
-        u_senha = st.text_input("Senha", type="password")
         
-        if opcao == "Fazer Login":
-            if st.button("Entrar"):
-                res_u = supabase.table("usuarios").select("*").eq("login", u_login).eq("senha", hash_senha(u_senha)).execute()
-                if res_u.data:
-                    st.session_state.user = res_u.data[0]
-                    st.rerun()
-                else:
-                    st.error("Login ou senha inválidos.")
+        # Ajuste: Criando um form para habilitar o envio pelo botão "Enter"
+        with st.form("form_acesso"):
+            u_login = st.text_input("Usuário").strip()
+            u_senha = st.text_input("Senha", type="password")
+            
+            if opcao == "Fazer Login":
+                if st.form_submit_button("Entrar"):
+                    res_u = supabase.table("usuarios").select("*").eq("login", u_login).eq("senha", hash_senha(u_senha)).execute()
+                    if res_u.data:
+                        st.session_state.user = res_u.data[0]
+                        st.rerun()
+                    else:
+                        st.error("Login ou senha inválidos.")
+            
+            else: # Lógica para Criar Conta
+                u_tipo = st.selectbox("Tipo de Perfil:", ["PROTETOR", "LOJISTA"])
+                if st.form_submit_button("Finalizar Cadastro"):
+                    if u_login and u_senha:
+                        try:
+                            # Insere o novo usuário no banco com hash de senha
+                            novo_usuario = {
+                                "login": u_login,
+                                "senha": hash_senha(u_senha),
+                                "tipo": u_tipo
+                            }
+                            supabase.table("usuarios").insert(novo_usuario).execute()
+                            st.success("Conta criada! Alterne para 'Fazer Login'.")
+                        except Exception as e:
+                            st.error(f"Erro ao cadastrar: Usuário já existe ou erro de conexão.")
+                    else:
+                        st.warning("Preencha todos os campos.")
     else:
         st.write(f"Olá, **{st.session_state.user['login']}**")
         if st.button("Sair"):
