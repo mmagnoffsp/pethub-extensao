@@ -64,7 +64,6 @@ if "id" in query_params:
                 st.markdown(f"**Espécie:** {pet.get('especie', 'Não informada')} | **Raça:** {pet.get('raca', 'SRD')}")
                 st.markdown(f"**Porte:** {pet.get('porte', 'Não informado')} | **Peso:** {pet.get('peso_pet', 'Não informado')}")
                 
-                # --- BLOCO MÉDICO ATUALIZADO ---
                 with st.expander("🩺 Prontuário de Castração e Saúde", expanded=True):
                     c_status = "✅ Já Castrado" if pet.get('castrado') else "❌ Não Castrado"
                     st.write(f"**Status:** {c_status}")
@@ -100,13 +99,14 @@ with st.sidebar:
     if not st.session_state.user:
         opcao = st.radio("Escolha:", ["Fazer Login", "Criar Conta"])
         
-        # Ajuste: Criando um form para habilitar o envio pelo botão "Enter"
+        # FORMULÁRIO ÚNICO PARA ACESSO (Habilita tecla Enter)
         with st.form("form_acesso"):
             u_login = st.text_input("Usuário").strip()
             u_senha = st.text_input("Senha", type="password")
             
             if opcao == "Fazer Login":
-                if st.form_submit_button("Entrar"):
+                btn_login = st.form_submit_button("Entrar")
+                if btn_login:
                     res_u = supabase.table("usuarios").select("*").eq("login", u_login).eq("senha", hash_senha(u_senha)).execute()
                     if res_u.data:
                         st.session_state.user = res_u.data[0]
@@ -114,21 +114,22 @@ with st.sidebar:
                     else:
                         st.error("Login ou senha inválidos.")
             
-            else: # Lógica para Criar Conta
+            else: # Fluxo de Criar Conta
                 u_tipo = st.selectbox("Tipo de Perfil:", ["PROTETOR", "LOJISTA"])
-                if st.form_submit_button("Finalizar Cadastro"):
+                btn_cadastro = st.form_submit_button("Finalizar Cadastro")
+                
+                if btn_cadastro:
                     if u_login and u_senha:
                         try:
-                            # Insere o novo usuário no banco com hash de senha
                             novo_usuario = {
                                 "login": u_login,
                                 "senha": hash_senha(u_senha),
                                 "tipo": u_tipo
                             }
                             supabase.table("usuarios").insert(novo_usuario).execute()
-                            st.success("Conta criada! Alterne para 'Fazer Login'.")
-                        except Exception as e:
-                            st.error(f"Erro ao cadastrar: Usuário já existe ou erro de conexão.")
+                            st.success("Conta criada! Mude para 'Fazer Login'.")
+                        except Exception:
+                            st.error("Erro: Usuário já existe ou falha na conexão.")
                     else:
                         st.warning("Preencha todos os campos.")
     else:
