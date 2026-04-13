@@ -24,29 +24,32 @@ def init_connection():
     url = None
     key = None
 
-    # 1. Tenta buscar pelo método oficial (Portal Streamlit / Local secrets.toml)
+    # 1. Tenta buscar pelo formato padrão do Streamlit (local ou nuvem)
     try:
         url = st.secrets["connections"]["supabase"]["url"]
         key = st.secrets["connections"]["supabase"]["key"]
     except Exception:
-        # 2. SE FALHAR: Tenta buscar de forma plana (caso o .toml esteja sem hierarquia)
+        # 2. Tenta buscar nomes planos caso o arquivo esteja simplificado
         try:
-            url = st.secrets.get("SUPABASE_URL") or st.secrets.get("url")
-            key = st.secrets.get("SUPABASE_KEY") or st.secrets.get("key")
+            url = st.secrets.get("url") or st.secrets.get("SUPABASE_URL")
+            key = st.secrets.get("key") or st.secrets.get("SUPABASE_KEY")
         except Exception:
             pass
 
-    # 3. SE AINDA ASSIM NÃO ACHAR: Mostra erro detalhado para te ajudar no VS Code
+    # 3. Se falhar, exibe o guia de solução
     if not url or not key:
         st.error("⚠️ Erro de Configuração: Chaves de conexão não encontradas.")
         st.info("""
         **Como resolver no seu computador:**
         1. Certifique-se que existe a pasta `.streamlit` dentro da pasta `pethub`.
-        2. Dentro dela, o arquivo `secrets.toml` deve conter:
+        2. O arquivo deve se chamar `secrets.toml`.
+        3. O conteúdo deve ser exatamente:
         
+        ```toml
         [connections.supabase]
-        url = "sua_url"
-        key = "sua_key"
+        url = "sua_url_aqui"
+        key = "sua_chave_aqui"
+        ```
         """)
         st.stop()
     
