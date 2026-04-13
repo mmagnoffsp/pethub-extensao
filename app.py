@@ -7,6 +7,7 @@ import uuid
 import urllib.parse
 import re
 import hashlib
+import os
 from datetime import datetime
 
 # --- CONFIGURAÇÃO DA PÁGINA ---
@@ -17,17 +18,41 @@ st.set_page_config(
     initial_sidebar_state="collapsed"
 )
 
-# --- CONEXÃO COM O BANCO ---
+# --- CONEXÃO COM O BANCO (VERSÃO RESILIENTE) ---
 @st.cache_resource
 def init_connection():
+    url = None
+    key = None
+
+    # 1. Tenta buscar pelo método oficial (Portal Streamlit / Local secrets.toml)
     try:
         url = st.secrets["connections"]["supabase"]["url"]
         key = st.secrets["connections"]["supabase"]["key"]
-        return create_client(url, key)
     except Exception:
-        st.error("⚠️ Erro de Configuração: Chaves de conexão não encontradas no Secrets.")
-        st.stop()
+        # 2. SE FALHAR: Tenta buscar de forma plana (caso o .toml esteja sem hierarquia)
+        try:
+            url = st.secrets.get("SUPABASE_URL") or st.secrets.get("url")
+            key = st.secrets.get("SUPABASE_KEY") or st.secrets.get("key")
+        except Exception:
+            pass
 
+    # 3. SE AINDA ASSIM NÃO ACHAR: Mostra erro detalhado para te ajudar no VS Code
+    if not url or not key:
+        st.error("⚠️ Erro de Configuração: Chaves de conexão não encontradas.")
+        st.info("""
+        **Como resolver no seu computador:**
+        1. Certifique-se que existe a pasta `.streamlit` dentro da pasta `pethub`.
+        2. Dentro dela, o arquivo `secrets.toml` deve conter:
+        
+        [connections.supabase]
+        url = "sua_url"
+        key = "sua_key"
+        """)
+        st.stop()
+    
+    return create_client(url, key)
+
+# Inicializa conexão
 supabase = init_connection()
 
 # --- UTILITÁRIOS ---
@@ -87,8 +112,8 @@ if "id" in query_params:
                     st.markdown(f'<a href="{link_wa}" target="_blank" style="background-color: #25D366; color: white; padding: 15px; text-align: center; text-decoration: none; display: block; border-radius: 8px; font-weight: bold; font-size: 18px; margin-bottom: 20px;">💬 Falar com o Protetor no WhatsApp</a>', unsafe_allow_html=True)
 
             st.stop() 
-    except Exception:
-        st.error("Erro ao carregar os dados.")
+    except Exception as e:
+        st.error(f"Erro ao carregar os dados: {e}")
 
 # --- 🔐 SISTEMA DE ACESSO ---
 if "user" not in st.session_state:
@@ -99,7 +124,6 @@ with st.sidebar:
     if not st.session_state.user:
         opcao = st.radio("Escolha:", ["Fazer Login", "Criar Conta"])
         
-        # FORMULÁRIO ÚNICO PARA ACESSO (Habilita tecla Enter)
         with st.form("form_acesso"):
             u_login = st.text_input("Usuário").strip()
             u_senha = st.text_input("Senha", type="password")
@@ -114,7 +138,7 @@ with st.sidebar:
                     else:
                         st.error("Login ou senha inválidos.")
             
-            else: # Fluxo de Criar Conta
+            else: # Criar Conta
                 u_tipo = st.selectbox("Tipo de Perfil:", ["PROTETOR", "LOJISTA"])
                 btn_cadastro = st.form_submit_button("Finalizar Cadastro")
                 
